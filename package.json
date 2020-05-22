@@ -1,7 +1,7 @@
 {
   "name": "vuereact-combined",
   "private": false,
-  "version": "0.1.0",
+  "version": "0.3.8",
   "description": "Vue和React快捷集成的工具包，并且适合复杂的集成场景",
   "main": "dist/vuereact.umd.js",
   "scripts": {
@@ -44,5 +44,17 @@
     "vue": "^2.6.10",
     "vue-template-compiler": "^2.6.10",
     "vue-template-es2015-compiler": "^1.9.1"
-  }
+  },
+  "keywords": [
+    "vue",
+    "react",
+    "vuereact",
+    "reactvue",
+    "vueinreact",
+    "reactinvue",
+    "redux",
+    "vuex",
+    "lazyvue",
+    "lazyreact"
+  ]
 }
