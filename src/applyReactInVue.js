@@ -1,10 +1,11 @@
 import React from 'react'
 import ReactDOM from 'react-dom'
 import applyVueInReact from './applyVueInReact'
+import options, {setOptions}  from './options'
 // vueRootInfo是为了保存vue的root节点options部分信息，现在保存router、store，在applyVueInReact方法中创建vue的中间件实例时会被设置
 // 为了使applyReactInVue -> applyVueInReact之后的vue组件依旧能引用vuex和vue router
 import vueRootInfo from './vueRootInfo'
-const createReactContainer = (Component, useReactOptions, wrapInstance) => {
+const createReactContainer = (Component, options, wrapInstance) => {
   return class applyReact extends React.Component {
     // 用于reactDevTools调试用
     static displayName = `useReact_${Component.displayName || Component.name || 'Component'}`
@@ -25,9 +26,10 @@ const createReactContainer = (Component, useReactOptions, wrapInstance) => {
 
     // 对于插槽的处理仍然需要将VNode转换成React组件
     createSlot (children) {
+      const {style, ...attrs} = options.react.slotWrapAttrs
       return {
         inheritAttrs: false,
-        render: createElement => createElement(useReactOptions.slotWrap, { attrs: { __use_react_slot_wrap: '', ...useReactOptions.slotWrapAttrs } }, children)
+        render: createElement => createElement(options.react.slotWrap, { attrs, style }, children)
       }
     }
     componentWillUnmount () {
@@ -62,7 +64,7 @@ const createReactContainer = (Component, useReactOptions, wrapInstance) => {
             let vueSlot = props[i]
             // 执行applyVueInReact方法将直接获得react组件对象，无需使用jsx
             // props[i] = { ...applyVueInReact(this.createSlot(props[i]))() }
-            props[i] = { ...applyVueInReact(this.createSlot(props[i])).render() }
+            props[i] = { ...applyVueInReact(this.createSlot(props[i]), {...options ,isSlots: true}).render() }
             props[i].vueSlot = vueSlot
           } else {
             props[i] = props[i].reactSlot
@@ -78,8 +80,7 @@ const createReactContainer = (Component, useReactOptions, wrapInstance) => {
       if (children != null) {
         if (!children.reactSlot) {
           let vueSlot = children
-          // 执行applyVueInReact方法将直接获得react组件对象，无需使用jsx
-          children = { ...applyVueInReact(this.createSlot(children)).render() }
+          children = { ...applyVueInReact(this.createSlot(children), {...options, isSlots: true}).render() }
           children.vueSlot = vueSlot
         } else {
           children = children.reactSlot
@@ -103,19 +104,13 @@ const createReactContainer = (Component, useReactOptions, wrapInstance) => {
     }
   }
 }
-export default function applyReactInVue (component, useReactOptions = {}) {
+export default function applyReactInVue (component, options) {
   // 兼容esModule
   if (component.__esModule && component.default) {
     component = component.default
   }
   // 处理附加参数
-  useReactOptions = {
-    componentWrap: 'div',
-    componentWrapAttrs: {},
-    slotWrap: 'div',
-    slotWrapAttrs: {},
-    ...useReactOptions
-  }
+  options = setOptions(options, undefined, true)
 
   return {
     created () {
@@ -128,7 +123,8 @@ export default function applyReactInVue (component, useReactOptions = {}) {
     },
     props: ['dataPassedProps'],
     render (createElement) {
-      return createElement(useReactOptions.componentWrap, { ref: 'react', attrs: { __use_react_component_wrap: '', ...useReactOptions.componentWrapAttrs } })
+      const {style, ...attrs} = options.react.componentWrapAttrs
+      return createElement(options.react.componentWrap, { ref: 'react', attrs, style})
     },
     methods: {
       // 用多阶函数解决作用域插槽的传递问题
@@ -138,7 +134,7 @@ export default function applyReactInVue (component, useReactOptions = {}) {
             if (slotFunction.reactFunction) {
               return slotFunction.reactFunction(context)
             } else {
-              return applyVueInReact(createReactSlot(slotFunction(context))).render()
+              return applyVueInReact(createReactSlot(slotFunction(context)), {...options, isSlots: true}).render()
             }
           }
           getSlot.vueFunction = slotFunction
@@ -156,7 +152,7 @@ export default function applyReactInVue (component, useReactOptions = {}) {
           children,
           ...__passedPropsRest
         } = (this.$props.dataPassedProps != null ? this.$props.dataPassedProps : {})
-        const Component = createReactContainer(component, useReactOptions, this)
+        const Component = createReactContainer(component, options, this)
         // 处理具名插槽，将作为属性被传递
         let normalSlots = {}
         let mergeSlots = { ...__passedPropsSlots, ...this.$slots }

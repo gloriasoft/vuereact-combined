@@ -4,6 +4,12 @@ import Vue from 'vue'
 import applyReactInVue from './applyReactInVue'
 import vueRootInfo from './vueRootInfo'
 import { reactRouterInfo, setReactRouterInVue, updateReactRouterInVue } from './applyReactRouterInVue'
+import globalOptions, {setOptions} from './options'
+
+const optionsName = 'vuereact-combined-options'
+
+const REACT_ALL_HANDLERS = new Set(['onClick', 'onContextMenu', 'onDoubleClick', 'onDrag', 'onDragEnd', 'onDragEnter', 'onDragExit', 'onDragLeave', 'onDragOver', 'onDragStart', 'onDrop', 'onMouseDown', 'onMouseEnter', 'onMouseLeave', 'onMouseMove', 'onMouseOut', 'onMouseOver', 'onMouseUp', 'onChange', 'onInput', 'onInvalid', 'onReset', 'onSubmit', 'onError', 'onLoad', 'onPointerDown', 'onPointerMove', 'onPointerUp', 'onPointerCancel', 'onGotPointerCapture', 'onLostPointerCapture', 'onPointerEnter', 'onPointerLeave', 'onPointerOver', 'onPointerOut', 'onSelect', 'onTouchCancel', 'onTouchEnd', 'onTouchMove', 'onTouchStart', 'onScroll', 'onWheel', 'onAbort', 'onCanPlay', 'onCanPlayThrough', 'onDurationChange', 'onEmptied', 'onEncrypted', 'onEnded', 'onError', 'onLoadedData', 'onLoadedMetadata', 'onLoadStart', 'onPause', 'onPlay', 'onPlaying', 'onProgress', 'onRateChange', 'onSeeked', 'onSeeking', 'onStalled', 'onSuspend', 'onTimeUpdate', 'onVolumeChange', 'onWaiting', 'onLoad', 'onError', 'onAnimationStart', 'onAnimationEnd', 'onAnimationIteration', 'onTransitionEnd', 'onToggle'])
+
 // 根据传入的是否是字符串，判断是否需要获取Vue的全局组件
 function filterVueComponent (component) {
   if (typeof component === 'string') {
@@ -67,10 +73,38 @@ class VueComponentLoader extends React.Component {
     // 捕获vue组件
     this.currentVueComponent = filterVueComponent(props.component)
     this.createVueInstance = this.createVueInstance.bind(this)
+    this.vueComponentContainer = this.createVueComponentContainer()
+  }
+
+  // 这一步变的复杂是要判断插槽和组件的区别，如果是插槽则对wrapper传入原生事件和插槽相关的属性，如果是组件对wrapper不传入原生事件
+  createVueComponentContainer (props = {}) {
+    const options = this.props[optionsName]
+    if (options.isSlots) {
+      Object.keys(this.props).forEach((keyName) => {
+        if (REACT_ALL_HANDLERS.has(keyName) && typeof this.props[keyName] === 'function') {
+          props[keyName] = this.props[keyName]
+        }
+      })
+      if (options.vue.slotWrapAttrs) {
+        props = {
+          ...props,
+          ...options.vue.slotWrapAttrs
+        }
+      }
+    } else {
+      if (options.vue.componentWrapAttrs) {
+        props = {
+          ...props,
+          ...options.vue.componentWrapAttrs
+        }
+      }
+    }
+
+    return options.vue.componentWrapHOC(<div ref={this.createVueInstance} />, props)
   }
 
   componentWillReceiveProps (nextProps) {
-    let { component, ...props } = nextProps
+    let { component, [optionsName]: options, ...props } = nextProps
     component = filterVueComponent(component)
     if (this.currentVueComponent !== component) {
       this.updateVueComponent(component)
@@ -130,7 +164,7 @@ class VueComponentLoader extends React.Component {
   // 将通过react组件的ref回调方式接收组件的dom对象，并且在class的constructor中已经绑定了上下文
   createVueInstance (targetElement) {
     const VueContainerInstance = this
-    let { component, 'data-passed-props': __passedProps = {}, ...props } = this.props
+    let { component, 'data-passed-props': __passedProps = {}, [optionsName]: options, ...props } = this.props
     component = filterVueComponent(component)
     // 过滤vue组件实例化后的$attrs
     let filterAttrs = (props) => {
@@ -181,7 +215,7 @@ class VueComponentLoader extends React.Component {
             if (scopedSlot.vueFunction) {
               return scopedSlot.vueFunction(context)
             } else {
-              return createElement(applyReactInVue(() => scopedSlot(context)))
+              return createElement(applyReactInVue(() => scopedSlot(context), options))
             }
           }
         })(reactFunction)
@@ -199,7 +233,7 @@ class VueComponentLoader extends React.Component {
           if (slot.vueSlot) {
             return slot.vueSlot
           }
-          let newSlot = [createElement(applyReactInVue(() => slot), { slot: slotName })]
+          let newSlot = [createElement(applyReactInVue(() => slot, options), { slot: slotName })]
           newSlot.reactSlot = slot
           return newSlot
         })(tempSlots[i], i)
@@ -214,7 +248,7 @@ class VueComponentLoader extends React.Component {
         if (children.vueSlot) {
           return children.vueSlot
         }
-        let newSlot = [createElement(applyReactInVue(() => children))]
+        let newSlot = [createElement(applyReactInVue(() => children, options))]
         newSlot.reactSlot = children
         return newSlot
       }
@@ -281,6 +315,15 @@ class VueComponentLoader extends React.Component {
           })
         ]
         let lastOn = { ...__passedPropsOn, ...on }
+
+        // 解决原生事件
+        Object.keys(props).forEach((keyName) => {
+          if (REACT_ALL_HANDLERS.has(keyName) && typeof props[keyName] === 'function') {
+            lastOn[keyName.replace(/^on/, '').toLowerCase()] = props[keyName]
+            delete props[keyName]
+          }
+        })
+
         let lastProps = {
           ...__passedPropsRest,
           ...props,
@@ -294,6 +337,7 @@ class VueComponentLoader extends React.Component {
             $scopedSlots: scopedSlots
           }
         }
+
         // 手动把props丛attrs中去除，
         // 这一步有点繁琐，但是又必须得处理
         let attrs = filterAttrs({ ...lastProps })
@@ -326,18 +370,24 @@ class VueComponentLoader extends React.Component {
   }
 
   render () {
-    return <div data-use-vue-component-wrap=""><div ref={this.createVueInstance} /></div>
+    return this.vueComponentContainer
   }
 }
 
-export default function applyVueInReact (component) {
+export default function applyVueInReact (component, options = {}) {
+  if (!component) {
+    console.warn('Component must be passed in applyVueInReact!')
+  }
+
   // 兼容esModule
   if (component.__esModule && component.default) {
     component = component.default
   }
-  // return props => <VueContainer {...props} component={component} />
+  
+  options = setOptions(options, undefined, true)
+
   // 使用React.forwardRef之后，组件不再是函数组件，如果使用applyVueInReact处理插槽vue的插槽，需要直接调用返回对象的render方法
-  return React.forwardRef((props, ref) => (
-    <VueContainer {...props} component={component} ref={ref}/>
-  ))
+  return React.forwardRef((props, ref) => {
+    return <VueContainer {...props} component={component} ref={ref} {...{[optionsName]: options}}/>
+  })
 }
