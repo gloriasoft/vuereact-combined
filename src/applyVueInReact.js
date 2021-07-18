@@ -53,15 +53,17 @@ class GetReactRouterPropsCom extends React.Component {
   }
 }
 const VueContainer = React.forwardRef((props, ref) => {
+  const globalOptions = setOptions(props[optionsName] || {}, undefined, true)
+
   // 判断是否获取过reactRouter
   if (reactRouterInfo.withRouter) {
     const TargetComponent = reactRouterInfo.withRouter(GetReactRouterPropsCom)
     // withRouter方法是通过wrappedComponentRef来传递ref的
     return (
-      <TargetComponent {...props} forwardRef={ref} />
+        <TargetComponent {...{...props, [optionsName]: globalOptions}} forwardRef={ref} />
     )
   } else {
-    return <VueComponentLoader {...props} ref={ref}/>
+    return <VueComponentLoader {...{...props, [optionsName]: globalOptions}} ref={ref}/>
   }
 })
 export {
@@ -109,6 +111,7 @@ class VueComponentLoader extends React.Component {
     if (this.currentVueComponent !== component) {
       this.updateVueComponent(component)
     }
+    // Object.assign(this.vueInstance.$data.children, this.doVModel(props).children)
     // 更改vue组件的data
     Object.assign(this.vueInstance.$data, this.doVModel(props))
   }
@@ -203,56 +206,7 @@ class VueComponentLoader extends React.Component {
       }
       return attrs
     }
-    // 获取作用域插槽
-    // 将react组件传入的$scopedSlots属性逐个转成vue组件
-    let getScopedSlots = (createElement, $scopedSlots) => {
-      let tempScopedSlots = { ...$scopedSlots }
-      for (let i in tempScopedSlots) {
-        if (!tempScopedSlots.hasOwnProperty(i)) continue
-        let reactFunction = tempScopedSlots[i]
-        tempScopedSlots[i] = ((scopedSlot) => {
-          return (context) => {
-            if (scopedSlot.vueFunction) {
-              return scopedSlot.vueFunction(context)
-            } else {
-              return createElement(applyReactInVue(() => scopedSlot(context), options))
-            }
-          }
-        })(reactFunction)
-        tempScopedSlots[i].reactFunction = reactFunction
-      }
-      return tempScopedSlots
-    }
-    // 获取具名插槽
-    // 将react组件传入的$slots属性逐个转成vue组件，但是透传的插槽不做处理
-    let getNamespaceSlots = (createElement, $slots) => {
-      let tempSlots = Object.assign({}, $slots)
-      for (let i in tempSlots) {
-        if (!tempSlots.hasOwnProperty(i) || !tempSlots[i]) continue
-        tempSlots[i] = ((slot, slotName) => {
-          if (slot.vueSlot) {
-            return slot.vueSlot
-          }
-          let newSlot = [createElement(applyReactInVue(() => slot, options), { slot: slotName })]
-          newSlot.reactSlot = slot
-          return newSlot
-        })(tempSlots[i], i)
-      }
-      return tempSlots
-    }
-    // 获取插槽整体数据
-    // children是react jsx的插槽，需要使用applyReactInVue转换成vue的组件选项对象
-    let getChildren = (createElement, children) => {
-      // 这里要做判断，否则没有普通插槽传入，vue组件又设置了slot，会报错
-      if (children != null) {
-        if (children.vueSlot) {
-          return children.vueSlot
-        }
-        let newSlot = [createElement(applyReactInVue(() => children, options))]
-        newSlot.reactSlot = children
-        return newSlot
-      }
-    }
+
     // 从作用域插槽中过滤具名插槽
     let filterNamedSlots = (scopedSlots, slots) => {
       if (!scopedSlots) return {}
@@ -271,6 +225,95 @@ class VueComponentLoader extends React.Component {
       ...vueRootInfo,
       el: targetElement,
       data: { ...this.doSync(this.doVModel(props)), 'data-passed-props': __passedProps },
+      methods: {
+        // 获取具名插槽
+        // 将react组件传入的$slots属性逐个转成vue组件，但是透传的插槽不做处理
+        getNamespaceSlots (createElement, $slots) {
+          if (!this.getNamespaceSlots.__namespaceSlots) {
+            this.getNamespaceSlots.__namespaceSlots = {}
+          }
+          let tempSlots = Object.assign({}, $slots)
+          for (let i in tempSlots) {
+            if (!tempSlots.hasOwnProperty(i) || !tempSlots[i]) continue
+            tempSlots[i] = ((slot, slotName) => {
+              if (slot.vueSlot) {
+                return slot.vueSlot
+              }
+              // 使用单例模式进行缓存，类似getChildren
+              let newSlot
+              if (!this.getNamespaceSlots.__namespaceSlots[i]) {
+                newSlot = [createElement(applyReactInVue(() => slot, { ...options, isSlots: true }), { slot: slotName })]
+                this.getNamespaceSlots.__namespaceSlots[i] = newSlot
+              } else {
+                newSlot = this.getNamespaceSlots.__namespaceSlots[i]
+                // 触发通信层更新fiberNode
+                newSlot[0].child.reactInstance.setState({ children: slot })
+              }
+              newSlot.reactSlot = slot
+              return newSlot
+            })(tempSlots[i], i)
+          }
+          return tempSlots
+        },
+        // 获取作用域插槽
+        // 将react组件传入的$scopedSlots属性逐个转成vue组件
+        getScopedSlots (createElement, $scopedSlots) {
+          if (!this.getScopedSlots.__scopeSlots) {
+            this.getScopedSlots.__scopeSlots = {}
+          }
+          const tempScopedSlots = { ...$scopedSlots }
+          for (let i in tempScopedSlots) {
+            if (!tempScopedSlots.hasOwnProperty(i)) continue
+            let reactFunction = tempScopedSlots[i]
+            tempScopedSlots[i] = ((scopedSlot) => {
+              return (context) => {
+                if (scopedSlot.vueFunction) {
+                  return scopedSlot.vueFunction(context)
+                }
+                // 使用单例模式进行缓存，类似getChildren
+                let newSlot
+                if (!this.getScopedSlots.__scopeSlots[i]) {
+                  newSlot = createElement(applyReactInVue(() => scopedSlot(context), { ...options, isSlots: true }))
+                  this.getScopedSlots.__scopeSlots[i] = newSlot
+                } else {
+                  newSlot = this.getScopedSlots.__scopeSlots[i]
+                  // 触发通信层更新fiberNode
+                  newSlot.child.reactInstance.setState({ children: scopedSlot(context) })
+                }
+                return newSlot
+              }
+            })(reactFunction)
+            tempScopedSlots[i].reactFunction = reactFunction
+          }
+          return tempScopedSlots
+        },
+        // 获取插槽整体数据
+        // children是react jsx的插槽，需要使用applyReactInVue转换成vue的组件选项对象
+        // 转化规则是单例原则，转换的vnode是用于react插槽的，vnode只是作为容器存在，恒久不变，除非chidren为空就则不返回vnode，容器将销毁
+        // vnode容器恒久保持只有一个子元素，children更新时，直接对子元素浅更新，（浅更新其实可以省略），因为真正操作react fiberNode更新是reactInstance.setState
+        // 在applyReactInVue中的通信层react实力会保存react插槽的children到state，获取通信层更定为vnode.child.reactInstance
+        getChildren (createElement, children) {
+          // 这里要做判断，否则没有普通插槽传入，vue组件又设置了slot，会报错
+          if (children != null) {
+            if (children.vueSlot) {
+              return children.vueSlot
+            }
+            let newSlot
+            if (!this.getChildren.__vnode) {
+              newSlot = [createElement(applyReactInVue(() => children, { ...options, isSlots: true }))]
+              this.getChildren.__vnode = newSlot
+            } else {
+              // 此步vnode的浅更新可以省略
+              // Object.assign(this.getChildren.__vnode[0], createElement(applyReactInVue(() => children, {...options, isSlots: true})))
+              newSlot = this.getChildren.__vnode
+              // 直接修改react的fiberNode，此过程vnode无感知，此方案只是临时
+              newSlot[0].child.reactInstance.setState({ children })
+            }
+            newSlot.reactSlot = children
+            return newSlot
+          }
+        }
+      },
       mounted () {
         // 在react包囊实例中，使用vueRef保存vue的目标组件实例
         VueContainerInstance.vueRef = this.$children[0]
@@ -300,10 +343,10 @@ class VueComponentLoader extends React.Component {
           }, ...props } = this.$data
         filterNamedSlots(__passedPropsScopedSlots, __passedPropsSlots)
         // 作用域插槽的处理
-        let scopedSlots = getScopedSlots(createElement, { ...__passedPropsScopedSlots, ...$scopedSlots })
-        let lastChildren = getChildren(createElement, this.children || __passedPropsChildren)
+        let scopedSlots = this.getScopedSlots(createElement, { ...__passedPropsScopedSlots, ...$scopedSlots })
+        let lastChildren = this.getChildren(createElement, this.children || __passedPropsChildren)
         // 获取插槽数据（包含了具名插槽）
-        let namedSlots = getNamespaceSlots(createElement, { ...__passedPropsSlots, ...$slots })
+        let namedSlots = this.getNamespaceSlots(createElement, { ...__passedPropsSlots, ...$slots })
         if (lastChildren) namedSlots.default = lastChildren
         let lastSlots = [
           (lastChildren || []),
@@ -341,17 +384,20 @@ class VueComponentLoader extends React.Component {
         // 手动把props丛attrs中去除，
         // 这一步有点繁琐，但是又必须得处理
         let attrs = filterAttrs({ ...lastProps })
+        // setTimeout(() => {
+        //   this.$children[0] && this.$children[0] && this.$children[0].$forceUpdate()
+        // },500)
         return createElement(
-          'use_vue_wrapper',
-          {
-            props: lastProps,
-            on: lastOn,
-            attrs,
-            'class': className,
-            style,
-            scopedSlots: { ...scopedSlots }
-          },
-          lastSlots
+            'use_vue_wrapper',
+            {
+              props: lastProps,
+              on: lastOn,
+              attrs,
+              'class': className,
+              style,
+              scopedSlots: { ...scopedSlots }
+            },
+            lastSlots
         )
       },
       components: {
@@ -365,7 +411,13 @@ class VueComponentLoader extends React.Component {
 
     // 使用$forceUpdate强制重新渲染vue实例，因为此方法只会重新渲染当前实例和插槽，不会重新渲染子组件，所以不会造成性能问题
     // $options.components包含了vue实例中所对应的组件序列, $option是只读,但是确实可以修改components属性,依靠此实现了动态组件替换
-    this.vueInstance.$options.components.use_vue_wrapper = nextComponent
+    if (nextComponent.__fromReactSlot) {
+      // 如果是来自react的slot，就强行通过修改vue组件构造器的use_vue_wrapper的缓存
+      Object.assign(this.vueInstance.$options.components.use_vue_wrapper._Ctor[0].options, nextComponent)
+    } else {
+      // 如果是标准的vue组件，则整个替换use_vue_wrapper为新的组件
+      this.vueInstance.$options.components.use_vue_wrapper = nextComponent
+    }
     this.vueInstance.$forceUpdate()
   }
 
@@ -383,8 +435,6 @@ export default function applyVueInReact (component, options = {}) {
   if (component.__esModule && component.default) {
     component = component.default
   }
-  
-  options = setOptions(options, undefined, true)
 
   // 使用React.forwardRef之后，组件不再是函数组件，如果使用applyVueInReact处理插槽vue的插槽，需要直接调用返回对象的render方法
   return React.forwardRef((props, ref) => {

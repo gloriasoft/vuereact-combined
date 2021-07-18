@@ -1,4 +1,4 @@
-import React from 'react'
+import React, {Fragment} from 'react'
 import ReactDOM from 'react-dom'
 import applyVueInReact from './applyVueInReact'
 import options, {setOptions}  from './options'
@@ -21,7 +21,10 @@ const createReactContainer = (Component, options, wrapInstance) => {
     constructor (props) {
       super(props)
       // 将所有的属性全部寄存在中间件的状态中，原理是通过一个有状态的React组件作为中间件，触发目标组件的props
-      this.state = { ...props }
+      this.state = {
+        ...props,
+        ...(options.isSlots ? { children: Component } : {}),
+      }
     }
 
     // 对于插槽的处理仍然需要将VNode转换成React组件
@@ -29,6 +32,7 @@ const createReactContainer = (Component, options, wrapInstance) => {
       const {style, ...attrs} = options.react.slotWrapAttrs
       return {
         inheritAttrs: false,
+        __fromReactSlot: true,
         render: createElement => createElement(options.react.slotWrap, { attrs, style }, children)
       }
     }
@@ -64,7 +68,7 @@ const createReactContainer = (Component, options, wrapInstance) => {
             let vueSlot = props[i]
             // 执行applyVueInReact方法将直接获得react组件对象，无需使用jsx
             // props[i] = { ...applyVueInReact(this.createSlot(props[i]))() }
-            props[i] = { ...applyVueInReact(this.createSlot(props[i]), {...options ,isSlots: true}).render() }
+            props[i] = { ...applyVueInReact(this.createSlot(props[i]), {...options, isSlots: true}).render() }
             props[i].vueSlot = vueSlot
           } else {
             props[i] = props[i].reactSlot
@@ -95,19 +99,25 @@ const createReactContainer = (Component, options, wrapInstance) => {
       if ((Object.getPrototypeOf(Component) !== Function.prototype && !(typeof Component === 'object' && !Component.render)) || applyReact.catchVueRefs()) {
         refInfo.ref = this.setRef
       }
+      if (options.isSlots) {
+        return this.state.children || this.props.children
+      }
       return (
-        <Component {...props}
-          {...{ 'data-passed-props': __passedProps }} {...refInfo}>
-          {children}
-        </Component>
+          <Component {...props}
+                     {...{ 'data-passed-props': __passedProps }} {...refInfo}>
+            {children}
+          </Component>
       )
     }
   }
 }
-export default function applyReactInVue (component, options) {
+export default function applyReactInVue (component, options = {}) {
   // 兼容esModule
   if (component.__esModule && component.default) {
     component = component.default
+  }
+  if (options.isSlots) {
+    component = component()
   }
   // 处理附加参数
   options = setOptions(options, undefined, true)
@@ -152,7 +162,7 @@ export default function applyReactInVue (component, options) {
           children,
           ...__passedPropsRest
         } = (this.$props.dataPassedProps != null ? this.$props.dataPassedProps : {})
-        const Component = createReactContainer(component, options, this)
+
         // 处理具名插槽，将作为属性被传递
         let normalSlots = {}
         let mergeSlots = { ...__passedPropsSlots, ...this.$slots }
@@ -193,18 +203,18 @@ export default function applyReactInVue (component, options) {
         let lastNormalSlots = { ...normalSlots }
         children = lastNormalSlots.default
         delete lastNormalSlots.default
-
         // 如果不传入组件，就作为更新
         if (!update) {
+          const Component = createReactContainer(component, options, this)
           let reactRootComponent = <Component
-            {...__passedPropsRest}
-            {...this.$attrs}
-            {...__passedProps.on}
-            {...{ children }}
-            {...lastNormalSlots}
-            {...scopedSlots}
-            {...{ 'data-passed-props': __passedProps }}
-            ref={ref => (this.reactInstance = ref)}
+              {...__passedPropsRest}
+              {...this.$attrs}
+              {...__passedProps.on}
+              {...{ children }}
+              {...lastNormalSlots}
+              {...scopedSlots}
+              {...{ 'data-passed-props': __passedProps }}
+              ref={ref => (this.reactInstance = ref)}
           />
           // 必须通过ReactReduxContext连接context
           if (this.$redux && this.$redux.store && this.$redux.ReactReduxContext) {
@@ -212,8 +222,8 @@ export default function applyReactInVue (component, options) {
             reactRootComponent = <ReduxContext.Provider value={{ store: this.$redux.store }}>{reactRootComponent}</ReduxContext.Provider>
           }
           ReactDOM.render(
-            reactRootComponent,
-            this.$refs.react
+              reactRootComponent,
+              this.$refs.react
           )
         } else {
           // 更新
@@ -221,13 +231,13 @@ export default function applyReactInVue (component, options) {
           clearTimeout(this.updateTimer)
           this.updateTimer = setTimeout(() => {
             this.reactInstance.setState({
-                ...__passedPropsRest,
-                ...this.$attrs,
-                ...this.$listeners,
-                ...{ children },
-                ...lastNormalSlots,
-                ...scopedSlots,
-                ...{ 'data-passed-props': __passedProps }
+              ...__passedPropsRest,
+              ...this.$attrs,
+              ...this.$listeners,
+              ...{ children },
+              ...lastNormalSlots,
+              ...scopedSlots,
+              ...{ 'data-passed-props': __passedProps }
             })
           })
         }
