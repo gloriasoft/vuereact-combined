@@ -27,7 +27,7 @@ npm i vuereact-combined -S
 vuereact-combined将融合做到了极致，支持了大部分的Vue和React组件的功能，并且在渲染更新上使用了和vuera不同的思路，完美解决了渲染性能问题  
 场景/功能 | vuereact-combined | vuera  
 -|-|-  
-prop (vue / react) | ✔ | ✔ |  
+normal prop (vue / react) | ✔ | ✔ |  
 event (vue / react) | ✔ | ✔ |  
 children (vue / react) | ✔ | ✔ |  
 named slots (vue) | ✔ |  |  
