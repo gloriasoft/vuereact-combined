@@ -44,6 +44,7 @@ redux in vue | ✔ |  |
 react-router in react | ✔ |  |  
 lazyReactInVue | ✔ |  |  
 lazyVueInReact | ✔ |  |  
+第三方组件跨框架使用（比如antd、element） | 支持所有第三方组件 | 基本不支持 |  
 ## 只是高阶组件  
 ````vue
 <!--Vue File-->
