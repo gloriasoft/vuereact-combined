@@ -45,6 +45,7 @@ react-router in react | ✔ |  |
 lazyReactInVue | ✔ |  |  
 lazyVueInReact | ✔ |  |  
 第三方组件跨框架使用（比如antd、element） | 支持所有第三方组件 | 基本不支持 |  
+自定义融合包囊层的dom attr | ✔ |  |  
 ## 只是高阶组件  
 ````vue
 <!--Vue File-->
@@ -490,6 +491,56 @@ export default {
   }
 }
 </script>
+```  
+## 需要注意的包囊性问题  
+由于在每一次跨越一个框架进行组件引用时，都会出现一层包囊，这个包囊是默认是以div呈现，并且会被特殊属性标注
+React->Vue，会在vue组件的dom元素外包囊一层标识data-use-vue-component-wrap的div
+Vue->React，会在react组件的dom元素外包囊一层标识__use_react_component_wrap的div
+如果引发样式问题，可以对applyVueInReact、applyReactInVue方法传入第二个参数`options`  
+```jsx
+import VueComponent from './VueComponent.vue'
+import { applyVueInReact } from 'vuereact-combined'
+const VueComponentInReact = applyVueInReact(VueComponent, {
+  react: {
+    // react.componentWrapAttrs代表是vue组件在react组件中的组件包囊层的标签设置
+    // 以下设置将设置组件的包囊层div的display为inline-block
+    componentWrapAttrs: {
+      style: 'display:inline-block',
+      class: 'react-wrap-vue-component-1'
+    },
+    // react.slotWrapAttrs代表是vue组件在react组件中的插槽包囊层的标签设置
+    // 以下设置将设置插槽的包囊层div的display为inline-block
+    slotWrapAttrs: {
+      style: 'display:inline-block'
+    },
+  },
+})
+```
+以下是默认配置
+```jsx
+// 默认配置
+const originOptions = {
+  react: {
+    componentWrap: 'div',
+    slotWrap: 'div',
+    componentWrapAttrs: {
+      __use_react_component_wrap: '',
+    },
+    slotWrapAttrs: {
+      __use_react_slot_wrap: '',
+    }
+  },
+  vue: {
+    // 组件wrapper
+    componentWrapHOC: (VueComponentMountAt, nativeProps) => (<div {...nativeProps}>{VueComponentMountAt}</div>),
+    componentWrapAttrs: {
+      'data-use-vue-component-wrap': '',
+    },
+    slotWrapAttrs: {
+      'data-use-vue-slot-wrap': '',
+    }
+  }
+}
 ```  
 ## 支持程度  
 #### 在react组件中引入vue组件  
