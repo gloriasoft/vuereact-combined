@@ -37,8 +37,13 @@ sync (vue) | ✔ |  |
 render props (react) | ✔ |  |  
 node props (react) | ✔ |  |  
 enter & leave 事件委托传递 (react) | ✔ |  |  
-slots & children & node在父组件数据变更后的生命周期表现 | 触发更新 | 每次都触发创建和销毁 |
-
+slots & children & node在父组件数据变更后的生命周期表现 | 触发更新 | 每次都触发创建和销毁 |  
+vuex in react | ✔ |  |  
+vue-router in react | ✔ |  |  
+redux in vue | ✔ |  |  
+react-router in react | ✔ |  |  
+lazyReactInVue | ✔ |  |  
+lazyVueInReact | ✔ |  |  
 ## 只是高阶组件  
 ````vue
 <!--Vue File-->
