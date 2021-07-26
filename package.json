@@ -1,7 +1,7 @@
 {
   "name": "vuereact-combined",
   "private": false,
-  "version": "0.3.8",
+  "version": "0.4.2",
   "description": "Vue和React快捷集成的工具包，并且适合复杂的集成场景",
   "main": "dist/vuereact.umd.js",
   "scripts": {
@@ -9,21 +9,21 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/devilwjp/VueReact.git"
+    "url": "git+https://github.com/devilwjp/vuereact-combined.git"
   },
   "author": "Devle Wu",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/devilwjp/VueReact/issues"
+    "url": "https://github.com/devilwjp/vuereact-combined/issues"
   },
   "files": [
     "dist"
   ],
-  "homepage": "https://github.com/devilwjp/VueReact#readme",
+  "homepage": "https://github.com/devilwjp/vuereact-combined#readme",
   "peerDependencies": {
     "react": ">= 16.3.0",
     "react-dom": ">= 16.2.0",
-    "vue": ">= 2.3"
+    "vue": ">= 2.6"
   },
   "devDependencies": {
     "@babel/core": "^7.7.4",
