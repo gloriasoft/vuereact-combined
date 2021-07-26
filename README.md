@@ -520,26 +520,31 @@ const VueComponentInReact = applyVueInReact(VueComponent, {
 ```jsx
 // 默认配置
 const originOptions = {
-  react: {
-    componentWrap: 'div',
-    slotWrap: 'div',
-    componentWrapAttrs: {
-      __use_react_component_wrap: '',
+    react: {
+        componentWrap: 'div',
+        slotWrap: 'div',
+        componentWrapAttrs: {
+            __use_react_component_wrap: '',
+        },
+        slotWrapAttrs: {
+            __use_react_slot_wrap: '',
+        }
     },
-    slotWrapAttrs: {
-      __use_react_slot_wrap: '',
+    vue: {
+        // 组件wrapper
+        componentWrapHOC: (VueComponentMountAt, nativeProps = []) => {
+            // 传入portals
+            return function ({ portals = [] } = {}) {
+                return (<div {...nativeProps}>{VueComponentMountAt}{portals.map((Portal, index) => <Portal key={index}/>)}</div>)
+            }
+        },
+        componentWrapAttrs: {
+            'data-use-vue-component-wrap': '',
+        },
+        slotWrapAttrs: {
+            'data-use-vue-slot-wrap': '',
+        }
     }
-  },
-  vue: {
-    // 组件wrapper
-    componentWrapHOC: (VueComponentMountAt, nativeProps) => (<div {...nativeProps}>{VueComponentMountAt}</div>),
-    componentWrapAttrs: {
-      'data-use-vue-component-wrap': '',
-    },
-    slotWrapAttrs: {
-      'data-use-vue-slot-wrap': '',
-    }
-  }
 }
 ```  
 ## 支持程度  
