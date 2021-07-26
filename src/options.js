@@ -13,7 +13,12 @@ const originOptions = {
   },
   vue: {
     // 组件wrapper
-    componentWrapHOC: (VueComponentMountAt, nativeProps) => (<div {...nativeProps}>{VueComponentMountAt}</div>),
+    componentWrapHOC: (VueComponentMountAt, nativeProps = []) => {
+      // 传入portals
+      return function ({ portals = [] } = {}) {
+        return (<div {...nativeProps}>{VueComponentMountAt}{portals.map((Portal, index) => <Portal key={index}/>)}</div>)
+      }
+    },
     componentWrapAttrs: {
       'data-use-vue-component-wrap': '',
     },

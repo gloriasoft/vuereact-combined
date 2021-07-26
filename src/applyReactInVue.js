@@ -1,30 +1,30 @@
 import React, { Fragment } from "react"
 import ReactDOM from "react-dom"
-import applyVueInReact from "./applyVueInReact"
+import applyVueInReact, { VueContainer } from "./applyVueInReact"
 import options, { setOptions } from "./options"
 // vueRootInfo是为了保存vue的root节点options部分信息，现在保存router、store，在applyVueInReact方法中创建vue的中间件实例时会被设置
 // 为了使applyReactInVue -> applyVueInReact之后的vue组件依旧能引用vuex和vue router
 import vueRootInfo from "./vueRootInfo"
+class FunctionComponentWrap extends React.Component {
+  constructor(props) {
+    super(props)
+  }
 
+  render() {
+    const Component = this.props.component
+    const { ref, ...props } = this.props.passedProps
+    return <Component {...props}>{this.props.children}</Component>
+  }
+}
 const createReactContainer = (Component, options, wrapInstance) => class applyReact extends React.Component {
   // 用于reactDevTools调试用
   static displayName = `useReact_${Component.displayName || Component.name || "Component"}`
-
-  // 为了打通不同实例的react组件的事件委托，将包囊层的fiberNode手动进行强制串联
-  linkEventDelegation() {
-    if (wrapInstance.$parent.reactWrapperRef && wrapInstance.reactRef._reactInternalFiber.return !== wrapInstance.$parent.reactWrapperRef._reactInternalFiber.child.child) {
-      wrapInstance.reactRef._reactInternalFiber.return = wrapInstance.$parent.reactWrapperRef._reactInternalFiber.child.child
-    }
-  }
 
   // 使用静态方法申明是因为可以节省性能开销，因为内部没有调用到实例属性和方法
   setRef(ref) {
     if (!ref) return
     // 使用reactRef属性保存目标react组件的实例，可以被父组setRef件的实例获取到
     wrapInstance.reactRef = ref
-
-    // 打通不同react实例的事件委托机制，强制子实例与父实例进行关联
-    this.linkEventDelegation()
 
     // 并且将vue的中间件实例保存在react组件的实例中
     // react组件可以通过这个属性来判断是否被包囊使用
@@ -49,11 +49,6 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
       __fromReactSlot: true,
       render: (createElement) => createElement(options.react.slotWrap, { attrs, style }, children),
     }
-  }
-
-  componentDidUpdate() {
-    // 打通不同react实例的事件委托机制，强制子实例与父实例进行关联
-    this.linkEventDelegation()
   }
 
   componentWillUnmount() {
@@ -118,18 +113,21 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
     const refInfo = {}
     // 判断是否要加ref，因为无状态的函数组件没有ref
     // 通过判断Component的原型是否不是Function原型
-    if ((Object.getPrototypeOf(Component) !== Function.prototype && !(typeof Component === "object" && !Component.render)) || applyReact.catchVueRefs()) {
-      refInfo.ref = this.setRef
-    }
+    refInfo.ref = this.setRef
     if (options.isSlots) {
       return this.state.children || this.props.children
     }
-    return (
-        <Component {...props}
-                   {...{ "data-passed-props": __passedProps }} {...refInfo}>
-          {children}
-        </Component>
-    )
+    if ((Object.getPrototypeOf(Component) !== Function.prototype && !(typeof Component === "object" && !Component.render)) || applyReact.catchVueRefs()) {
+      refInfo.ref = this.setRef
+      return (
+          <Component {...props}
+                     {...{ "data-passed-props": __passedProps }} {...refInfo}>
+            {children}
+          </Component>
+      )
+    }
+    const newProps = { ...props, ...{ "data-passed-props": __passedProps } }
+    return <FunctionComponentWrap passedProps={newProps} component={Component} {...refInfo}>{children}</FunctionComponentWrap>
   }
 }
 export default function applyReactInVue(component, options = {}) {
@@ -241,10 +239,36 @@ export default function applyReactInVue(component, options = {}) {
             const ReduxContext = this.$redux.ReactReduxContext
             reactRootComponent = <ReduxContext.Provider value={{ store: this.$redux.store }}>{reactRootComponent}</ReduxContext.Provider>
           }
-          ReactDOM.render(
-              reactRootComponent,
-              this.$refs.react
-          )
+          // 必须异步，等待包囊层的react实例完毕
+          this.$nextTick(() => {
+            const container = this.$refs.react
+            let parentInstance = this.$parent
+            let reactWrapperRef
+            // 向上查找react包囊层
+            while (parentInstance) {
+              if (parentInstance.reactWrapperRef) {
+                reactWrapperRef = parentInstance.reactWrapperRef
+                break
+              }
+              parentInstance = parentInstance.$parent
+            }
+            // 如果存在包囊层，则激活portal
+            if (reactWrapperRef) {
+              // 存储包囊层引用
+              this.parentReactWrapperRef = reactWrapperRef
+              // 存储portal引用
+              this.reactPortal = () => ReactDOM.createPortal(
+                  reactRootComponent,
+                  container
+              )
+              reactWrapperRef.pushPortal(this.reactPortal)
+              return
+            }
+            ReactDOM.render(
+                reactRootComponent,
+                container
+            )
+          })
         } else {
           // 更新
           // 异步合并更新
@@ -269,6 +293,15 @@ export default function applyReactInVue(component, options = {}) {
     },
     beforeDestroy() {
       clearTimeout(this.updateTimer)
+      // 删除portal
+      if (this.reactPortal) {
+        const { portals } = this.parentReactWrapperRef.state
+        const index = portals.indexOf(this.reactPortal)
+        portals.splice(index, 1)
+        this.parentReactWrapperRef.setState({ portals })
+        return
+      }
+      // 删除根节点
       ReactDOM.unmountComponentAtNode(this.$refs.react)
     },
     updated() {

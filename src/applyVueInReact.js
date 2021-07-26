@@ -72,37 +72,47 @@ export {
 class VueComponentLoader extends React.Component {
   constructor (props) {
     super(props)
+    this.state = {
+      portals: []
+    }
     // 捕获vue组件
     this.currentVueComponent = filterVueComponent(props.component)
     this.createVueInstance = this.createVueInstance.bind(this)
     this.vueComponentContainer = this.createVueComponentContainer()
   }
 
+  pushPortal (portal) {
+    const { portals } = this.state
+    portals.push(portal)
+    this.setState({ portals })
+  }
+
   // 这一步变的复杂是要判断插槽和组件的区别，如果是插槽则对wrapper传入原生事件和插槽相关的属性，如果是组件对wrapper不传入原生事件
-  createVueComponentContainer (props = {}) {
+  createVueComponentContainer () {
+    let nativeProps = {}
     const options = this.props[optionsName]
     if (options.isSlots) {
       Object.keys(this.props).forEach((keyName) => {
         if (REACT_ALL_HANDLERS.has(keyName) && typeof this.props[keyName] === 'function') {
-          props[keyName] = this.props[keyName]
+          nativeProps[keyName] = this.props[keyName]
         }
       })
       if (options.vue.slotWrapAttrs) {
-        props = {
-          ...props,
+        nativeProps = {
+          ...nativeProps,
           ...options.vue.slotWrapAttrs
         }
       }
     } else {
       if (options.vue.componentWrapAttrs) {
-        props = {
-          ...props,
+        nativeProps = {
+          ...nativeProps,
           ...options.vue.componentWrapAttrs
         }
       }
     }
 
-    return options.vue.componentWrapHOC(<div ref={this.createVueInstance} />, props)
+    return options.vue.componentWrapHOC(<div ref={this.createVueInstance} />, nativeProps)
   }
 
   componentWillReceiveProps (nextProps) {
@@ -422,7 +432,7 @@ class VueComponentLoader extends React.Component {
   }
 
   render () {
-    return this.vueComponentContainer
+    return <this.vueComponentContainer portals={this.state.portals}/>
   }
 }
 
