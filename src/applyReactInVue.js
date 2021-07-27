@@ -120,10 +120,10 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
     if ((Object.getPrototypeOf(Component) !== Function.prototype && !(typeof Component === "object" && !Component.render)) || applyReact.catchVueRefs()) {
       refInfo.ref = this.setRef
       return (
-          <Component {...props}
-                     {...{ "data-passed-props": __passedProps }} {...refInfo}>
-            {children}
-          </Component>
+        <Component {...props}
+                   {...{ "data-passed-props": __passedProps }} {...refInfo}>
+          {children}
+        </Component>
       )
     }
     const newProps = { ...props, ...{ "data-passed-props": __passedProps } }
@@ -225,14 +225,14 @@ export default function applyReactInVue(component, options = {}) {
         if (!update) {
           const Component = createReactContainer(component, options, this)
           let reactRootComponent = <Component
-              {...__passedPropsRest}
-              {...this.$attrs}
-              {...__passedProps.on}
-              {...{ children }}
-              {...lastNormalSlots}
-              {...scopedSlots}
-              {...{ "data-passed-props": __passedProps }}
-              ref={(ref) => (this.reactInstance = ref)}
+            {...__passedPropsRest}
+            {...this.$attrs}
+            {...__passedProps.on}
+            {...{ children }}
+            {...lastNormalSlots}
+            {...scopedSlots}
+            {...{ "data-passed-props": __passedProps }}
+            ref={(ref) => (this.reactInstance = ref)}
           />
           // 必须通过ReactReduxContext连接context
           if (this.$redux && this.$redux.store && this.$redux.ReactReduxContext) {
@@ -246,6 +246,10 @@ export default function applyReactInVue(component, options = {}) {
             let reactWrapperRef
             // 向上查找react包囊层
             while (parentInstance) {
+              if (parentInstance.parentReactWrapperRef) {
+                reactWrapperRef = parentInstance.parentReactWrapperRef
+                break
+              }
               if (parentInstance.reactWrapperRef) {
                 reactWrapperRef = parentInstance.reactWrapperRef
                 break
@@ -258,15 +262,15 @@ export default function applyReactInVue(component, options = {}) {
               this.parentReactWrapperRef = reactWrapperRef
               // 存储portal引用
               this.reactPortal = () => ReactDOM.createPortal(
-                  reactRootComponent,
-                  container
+                reactRootComponent,
+                container
               )
               reactWrapperRef.pushPortal(this.reactPortal)
               return
             }
             ReactDOM.render(
-                reactRootComponent,
-                container
+              reactRootComponent,
+              container
             )
           })
         } else {

@@ -6,9 +6,15 @@ const originOptions = {
     slotWrap: 'div',
     componentWrapAttrs: {
       __use_react_component_wrap: '',
+      style: {
+        all: 'unset'
+      }
     },
     slotWrapAttrs: {
       __use_react_slot_wrap: '',
+      style: {
+        all: 'unset'
+      }
     }
   },
   vue: {
@@ -21,9 +27,15 @@ const originOptions = {
     },
     componentWrapAttrs: {
       'data-use-vue-component-wrap': '',
+      style: {
+        all: 'unset',
+      }
     },
     slotWrapAttrs: {
       'data-use-vue-slot-wrap': '',
+      style: {
+        all: 'unset'
+      }
     }
   }
 }

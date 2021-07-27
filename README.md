@@ -30,6 +30,7 @@ vuereact-combined将融合做到了极致，支持了大部分的Vue和React组�
 normal prop (vue / react) | ✔ | ✔ |  
 event (vue / react) | ✔ | ✔ |  
 children (vue / react) | ✔ | ✔ |  
+Provider/Consumer in vue (react) | ✔ |  |  
 named slots (vue) | ✔ |  |  
 scope slots (vue) | ✔ |  |  
 v-model (vue) | ✔ |  |  
@@ -248,14 +249,17 @@ export default function() {
 <template>
   <ReactComponentInVue>
     我是普通children
+    <!--  等同于向react组件传入 slotA={<span>我是ReactNode类型的slotA属性</span>}  -->
     <template v-slot:slotA>
-      我是ReactNode类型的slotA属性
+      <span>我是ReactNode类型的slotA属性</span>
     </template>
+    <!--  等同于向react组件传入 slotB={<span>我是ReactNode类型的slotA属性</span>}  -->
     <template v-slot:slotB>
-      我是ReactNode类型的slotB属性
+      <span>我是ReactNode类型的slotB属性</span>
     </template>
+    <!--  等同于向react组件传入 slotC={(context) => <span>我是renderProps类型：{{context.value}}</span>}  -->
     <template v-slot:slotC="context">
-      我是renderProps类型：{{context.value}}
+      <span>我是renderProps类型：{{context.value}}</span>
     </template>
   </ReactComponentInVue>
 </template>
@@ -265,7 +269,6 @@ import { applyReactInVue } from 'vuereact-combined'
 // 一个开放ReactNode类型属性和renderProps类型属性的React组件
 import ReactComponent from './ReactComponent'
 export default {
-  name: 'demo2',
   components: {
     ReactComponentInVue: applyReactInVue(ReactComponent)
   }
@@ -273,6 +276,38 @@ export default {
 </script>
 ```  
 applyReactInVue会将ReactNode类型的属性转会为Vue的具名插槽，将renderProps类型的属性转换为作用域插槽，具名插槽和作用域插槽的插槽名就是属性名  
+## 在Vue组件中调用React组件的Context/Provider  
+```vue
+<!--Vue File-->
+<template>
+  <MyProvider :value="content">
+    <Button>Vue按钮</Button>
+    <!--  React组件中可以正常的使用Consumer消费Context  -->
+    <ReactComponentInVue/>
+  </MyProvider>
+</template>
+
+<script>
+import { applyReactInVue } from 'vuereact-combined'
+// React Context
+import MyContext from "./MyContext"
+import {Button} from 'element-ui'
+import ReactComponent from './ReactComponent'
+export default {
+  data() {
+    return {
+      content: 'hahahahaha!'
+    }
+  },
+  components: {
+    Button,
+    ReactComponentInVue: applyReactInVue(ReactComponent),
+    // 把Provider当作React组件直接转换
+    MyProvider: applyReactInVue(MyContext.Provider),
+  }
+}
+</script>
+```  
 ## 在React组件中使用Vue的动态组件
 ```jsx
 // React JSX File

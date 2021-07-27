@@ -60,7 +60,7 @@ const VueContainer = React.forwardRef((props, ref) => {
     const TargetComponent = reactRouterInfo.withRouter(GetReactRouterPropsCom)
     // withRouter方法是通过wrappedComponentRef来传递ref的
     return (
-        <TargetComponent {...{...props, [optionsName]: globalOptions}} forwardRef={ref} />
+      <TargetComponent {...{...props, [optionsName]: globalOptions}} forwardRef={ref} />
     )
   } else {
     return <VueComponentLoader {...{...props, [optionsName]: globalOptions}} ref={ref}/>
@@ -353,12 +353,12 @@ class VueComponentLoader extends React.Component {
           }, ...props } = this.$data
         filterNamedSlots(__passedPropsScopedSlots, __passedPropsSlots)
         // 作用域插槽的处理
-        let scopedSlots = this.getScopedSlots(createElement, { ...__passedPropsScopedSlots, ...$scopedSlots })
-        let lastChildren = this.getChildren(createElement, this.children || __passedPropsChildren)
+        const scopedSlots = this.getScopedSlots(createElement, { ...__passedPropsScopedSlots, ...$scopedSlots })
+        const lastChildren = this.getChildren(createElement, this.children || __passedPropsChildren)
         // 获取插槽数据（包含了具名插槽）
-        let namedSlots = this.getNamespaceSlots(createElement, { ...__passedPropsSlots, ...$slots })
+        const namedSlots = this.getNamespaceSlots(createElement, { ...__passedPropsSlots, ...$slots })
         if (lastChildren) namedSlots.default = lastChildren
-        let lastSlots = [
+        const lastSlots = [
           (lastChildren || []),
           ...Object.keys(namedSlots).map((key) => {
             if (key === 'default') {
@@ -367,12 +367,13 @@ class VueComponentLoader extends React.Component {
             return namedSlots[key]
           })
         ]
-        let lastOn = { ...__passedPropsOn, ...on }
+        const lastOn = { ...__passedPropsOn, ...on }
+        const nativeOn = {}
 
         // 解决原生事件
         Object.keys(props).forEach((keyName) => {
           if (REACT_ALL_HANDLERS.has(keyName) && typeof props[keyName] === 'function') {
-            lastOn[keyName.replace(/^on/, '').toLowerCase()] = props[keyName]
+            nativeOn[keyName.replace(/^on/, '').toLowerCase()] = props[keyName]
             delete props[keyName]
           }
         })
@@ -393,21 +394,19 @@ class VueComponentLoader extends React.Component {
 
         // 手动把props丛attrs中去除，
         // 这一步有点繁琐，但是又必须得处理
-        let attrs = filterAttrs({ ...lastProps })
-        // setTimeout(() => {
-        //   this.$children[0] && this.$children[0] && this.$children[0].$forceUpdate()
-        // },500)
+        const attrs = filterAttrs({ ...lastProps })
         return createElement(
-            'use_vue_wrapper',
-            {
-              props: lastProps,
-              on: lastOn,
-              attrs,
-              'class': className,
-              style,
-              scopedSlots: { ...scopedSlots }
-            },
-            lastSlots
+          'use_vue_wrapper',
+          {
+            props: lastProps,
+            on: lastOn,
+            nativeOn,
+            attrs,
+            'class': className,
+            style,
+            scopedSlots: { ...scopedSlots }
+          },
+          lastSlots
         )
       },
       components: {
