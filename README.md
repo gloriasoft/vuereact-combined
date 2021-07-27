@@ -540,13 +540,17 @@ const VueComponentInReact = applyVueInReact(VueComponent, {
     // react.componentWrapAttrs代表是vue组件在react组件中的组件包囊层的标签设置
     // 以下设置将设置组件的包囊层div的display为inline-block
     componentWrapAttrs: {
-      style: 'display:inline-block',
+      style: {
+            display: 'inline-block'
+        },
       class: 'react-wrap-vue-component-1'
     },
     // react.slotWrapAttrs代表是vue组件在react组件中的插槽包囊层的标签设置
     // 以下设置将设置插槽的包囊层div的display为inline-block
     slotWrapAttrs: {
-      style: 'display:inline-block'
+      style: {
+          display: 'inline-block'
+      }
     },
   },
 })
@@ -560,9 +564,15 @@ const originOptions = {
         slotWrap: 'div',
         componentWrapAttrs: {
             __use_react_component_wrap: '',
+            style: {
+                all: 'unset'
+            }
         },
         slotWrapAttrs: {
             __use_react_slot_wrap: '',
+            style: {
+                all: 'unset'
+            }
         }
     },
     vue: {
@@ -575,9 +585,15 @@ const originOptions = {
         },
         componentWrapAttrs: {
             'data-use-vue-component-wrap': '',
+            style: {
+                all: 'unset',
+            }
         },
         slotWrapAttrs: {
             'data-use-vue-slot-wrap': '',
+            style: {
+                all: 'unset'
+            }
         }
     }
 }
