@@ -140,9 +140,15 @@ export default function applyReactInVue(component, options = {}) {
   }
   // 处理附加参数
   options = setOptions(options, undefined, true)
-
   return {
+    data() {
+      return {
+        lastVnodeData: {}
+      }
+    },
     created() {
+      // this.vnodeData = this.$vnode.data
+      this.cleanVnodeStyleClass()
       if (this.$root.$options.router) {
         vueRootInfo.router = this.$root.$options.router
       }
@@ -156,6 +162,71 @@ export default function applyReactInVue(component, options = {}) {
       return createElement(options.react.componentWrap, { ref: "react", attrs, style })
     },
     methods: {
+      // 清除style和class，避免包囊层被污染
+      cleanVnodeStyleClass() {
+        let vnode = this.$vnode
+        // 每次$vnode被修改，将vnode.data中的style、staticStyle、class、staticClass记下来并且清除
+        Object.defineProperty(this, '$vnode', {
+          get() {
+            return vnode
+          },
+          set: (val) => {
+            this.lastVnodeData = {
+              style: { ...this.formatStyle(val.data.style), ...this.formatStyle(val.data.staticStyle) },
+              class: { ...this.formatClass(val.data.class), ...this.formatClass(val.data.staticClass) },
+            }
+            Object.assign(val.data, {
+              staticStyle: null,
+              style: null,
+              staticClass: null,
+              class: null,
+            })
+            vnode = val
+            return val
+          }
+        })
+      },
+      toCamelCase(val) {
+        const reg = /-(\w)/g
+        return val.replace(reg, ($, $1) => $1.toUpperCase())
+      },
+      formatStyle(val) {
+        if (!val) return {}
+        if (typeof val === 'string') {
+          val = val.trim()
+          return val.split(/\s*;\s*/).reduce((prev, cur) => {
+            if (!cur) {
+              return prev
+            }
+            cur = cur.split(/\s*:\s*/)
+            if (cur.length !== 2) return prev
+            Object.assign(prev, {
+              [this.toCamelCase(cur[0])]: cur[1],
+            })
+            return prev
+          }, {})
+        }
+        if (typeof val === 'object') {
+          const newVal = {}
+          Object.keys(val).forEach((v) => {
+            newVal[this.toCamelCase(v)] = val[v]
+          })
+          return newVal
+        }
+        return {}
+      },
+      formatClass(val) {
+        if (!val) return []
+        if (val instanceof Array) return val
+        if (typeof val === 'string') {
+          val = val.trim()
+          return val.split(/\s+/)
+        }
+        if (typeof val === 'object') {
+          return Object.keys(val).map((v) => (val[v] ? val[v]: ''))
+        }
+        return []
+      },
       // 用多阶函数解决作用域插槽的传递问题
       getScopeSlot(slotFunction) {
         function scopedSlotFunction(createReactSlot) {
@@ -225,14 +296,16 @@ export default function applyReactInVue(component, options = {}) {
         if (!update) {
           const Component = createReactContainer(component, options, this)
           let reactRootComponent = <Component
-            {...__passedPropsRest}
-            {...this.$attrs}
-            {...__passedProps.on}
-            {...{ children }}
-            {...lastNormalSlots}
-            {...scopedSlots}
-            {...{ "data-passed-props": __passedProps }}
-            ref={(ref) => (this.reactInstance = ref)}
+              {...__passedPropsRest}
+              {...this.$attrs}
+              {...__passedProps.on}
+              {...{ children }}
+              {...lastNormalSlots}
+              {...scopedSlots}
+              {...{ "data-passed-props": __passedProps }}
+              style={this.lastVnodeData.style}
+              className={this.lastVnodeData.class}
+              ref={(ref) => (this.reactInstance = ref)}
           />
           // 必须通过ReactReduxContext连接context
           if (this.$redux && this.$redux.store && this.$redux.ReactReduxContext) {
@@ -262,15 +335,15 @@ export default function applyReactInVue(component, options = {}) {
               this.parentReactWrapperRef = reactWrapperRef
               // 存储portal引用
               this.reactPortal = () => ReactDOM.createPortal(
-                reactRootComponent,
-                container
+                  reactRootComponent,
+                  container
               )
               reactWrapperRef.pushPortal(this.reactPortal)
               return
             }
             ReactDOM.render(
-              reactRootComponent,
-              container
+                reactRootComponent,
+                container
             )
           })
         } else {
@@ -286,6 +359,8 @@ export default function applyReactInVue(component, options = {}) {
               ...lastNormalSlots,
               ...scopedSlots,
               ...{ "data-passed-props": __passedProps },
+              style: this.lastVnodeData.style,
+              className: this.lastVnodeData.class,
             })
           })
         }
@@ -313,6 +388,9 @@ export default function applyReactInVue(component, options = {}) {
     },
     inheritAttrs: false,
     watch: {
+      lastVnodeData() {
+        this.mountReactComponent(true)
+      },
       $attrs: {
         handler() {
           this.mountReactComponent(true)
