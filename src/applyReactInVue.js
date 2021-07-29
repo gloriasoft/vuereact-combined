@@ -173,7 +173,7 @@ export default function applyReactInVue(component, options = {}) {
           set: (val) => {
             this.lastVnodeData = {
               style: { ...this.formatStyle(val.data.style), ...this.formatStyle(val.data.staticStyle) },
-              class: { ...this.formatClass(val.data.class), ...this.formatClass(val.data.staticClass) },
+              class: Array.from(new Set([...this.formatClass(val.data.class), ...this.formatClass(val.data.staticClass)])).join(' '),
             }
             Object.assign(val.data, {
               staticStyle: null,
