@@ -158,10 +158,20 @@ export default function applyReactInVue(component, options = {}) {
     },
     props: ["dataPassedProps"],
     render(createElement) {
+      this.slotsInit()
       const { style, ...attrs } = options.react.componentWrapAttrs
       return createElement(options.react.componentWrap, { ref: "react", attrs, style })
     },
     methods: {
+      // hack!!!! 一定要在render函数李触发，才能激活具名插槽
+      slotsInit() {
+        Object.keys(this.$slots).forEach((key) => {
+          this.$slots[key]
+        })
+        Object.keys(this.$scopedSlots).forEach((key) => {
+          this.$scopedSlots[key]()
+        })
+      },
       // 清除style和class，避免包囊层被污染
       cleanVnodeStyleClass() {
         let vnode = this.$vnode
@@ -292,6 +302,13 @@ export default function applyReactInVue(component, options = {}) {
         const lastNormalSlots = { ...normalSlots }
         children = lastNormalSlots.default
         delete lastNormalSlots.default
+        // 获取style scoped生成的hash
+        const hashMap = {}
+        for (let i in this.$el.dataset) {
+          if (this.$el.dataset.hasOwnProperty(i) && i.match(/v-[\da-zA-Z]+/)) {
+            hashMap['data-' + i] = ''
+          }
+        }
         // 如果不传入组件，就作为更新
         if (!update) {
           const Component = createReactContainer(component, options, this)
@@ -303,8 +320,9 @@ export default function applyReactInVue(component, options = {}) {
               {...lastNormalSlots}
               {...scopedSlots}
               {...{ "data-passed-props": __passedProps }}
+              {...(this.lastVnodeData.class ? {className: this.lastVnodeData.class}: {})}
+              {...hashMap}
               style={this.lastVnodeData.style}
-              className={this.lastVnodeData.class}
               ref={(ref) => (this.reactInstance = ref)}
           />
           // 必须通过ReactReduxContext连接context
@@ -359,8 +377,9 @@ export default function applyReactInVue(component, options = {}) {
               ...lastNormalSlots,
               ...scopedSlots,
               ...{ "data-passed-props": __passedProps },
+              ...(this.lastVnodeData.class ? {className: this.lastVnodeData.class}: {}),
+              ...{...hashMap},
               style: this.lastVnodeData.style,
-              className: this.lastVnodeData.class,
             })
           })
         }
@@ -388,9 +407,6 @@ export default function applyReactInVue(component, options = {}) {
     },
     inheritAttrs: false,
     watch: {
-      lastVnodeData() {
-        this.mountReactComponent(true)
-      },
       $attrs: {
         handler() {
           this.mountReactComponent(true)
