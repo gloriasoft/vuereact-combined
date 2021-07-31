@@ -1,10 +1,12 @@
-import React from "react"
+import React, {version} from "react"
 import ReactDOM from "react-dom"
 import applyVueInReact, { VueContainer } from "./applyVueInReact"
 import options, { setOptions } from "./options"
 // vueRootInfo是为了保存vue的root节点options部分信息，现在保存router、store，在applyVueInReact方法中创建vue的中间件实例时会被设置
 // 为了使applyReactInVue -> applyVueInReact之后的vue组件依旧能引用vuex和vue router
 import vueRootInfo from "./vueRootInfo"
+
+const unsafePrefix = parseFloat(version) > 16.3 ? 'UNSAFE_' : ''
 class FunctionComponentWrap extends React.Component {
   constructor(props) {
     super(props)
@@ -51,7 +53,7 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
     }
   }
 
-  componentWillUnmount() {
+  [`${unsafePrefix}componentWillUnmount`]() {
     if (!wrapInstance.reactRef) return
     // 垃圾回收，但是保留属性名，借鉴vue的refs对于组件销毁保留属性名的模式
     wrapInstance.reactRef.vueWrapperRef = null
@@ -141,11 +143,6 @@ export default function applyReactInVue(component, options = {}) {
   // 处理附加参数
   options = setOptions(options, undefined, true)
   return {
-    data() {
-      return {
-        lastVnodeData: {}
-      }
-    },
     created() {
       // this.vnodeData = this.$vnode.data
       this.cleanVnodeStyleClass()
@@ -185,14 +182,13 @@ export default function applyReactInVue(component, options = {}) {
               style: { ...this.formatStyle(val.data.style), ...this.formatStyle(val.data.staticStyle) },
               class: Array.from(new Set([...this.formatClass(val.data.class), ...this.formatClass(val.data.staticClass)])).join(' '),
             }
-            Object.assign(val.data, {
+            vnode = {...val, data: {...val.data, ...{
               staticStyle: null,
               style: null,
               staticClass: null,
               class: null,
-            })
-            vnode = val
-            return val
+            }}}
+            return vnode
           }
         })
       },
