@@ -6,7 +6,6 @@ import options, { setOptions } from "./options"
 // 为了使applyReactInVue -> applyVueInReact之后的vue组件依旧能引用vuex和vue router
 import vueRootInfo from "./vueRootInfo"
 
-const unsafePrefix = parseFloat(version) > 16.3 ? 'UNSAFE_' : ''
 class FunctionComponentWrap extends React.Component {
   constructor(props) {
     super(props)
@@ -53,7 +52,7 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
     }
   }
 
-  [`${unsafePrefix}componentWillUnmount`]() {
+  componentWillUnmount() {
     if (!wrapInstance.reactRef) return
     // 垃圾回收，但是保留属性名，借鉴vue的refs对于组件销毁保留属性名的模式
     wrapInstance.reactRef.vueWrapperRef = null
