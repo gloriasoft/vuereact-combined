@@ -1,7 +1,7 @@
 {
   "name": "vuereact-combined",
   "private": false,
-  "version": "1.0.2-beta.3",
+  "version": "1.0.2",
   "description": "Vue和React快捷集成的工具包，并且适合复杂的集成场景",
   "main": "dist/vuereact.umd.js",
   "scripts": {
