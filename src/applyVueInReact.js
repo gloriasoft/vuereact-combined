@@ -1,4 +1,4 @@
-import React from 'react'
+import React, {version} from 'react'
 import Vue from 'vue'
 
 import applyReactInVue from './applyReactInVue'
@@ -6,6 +6,7 @@ import vueRootInfo from './vueRootInfo'
 import { reactRouterInfo, setReactRouterInVue, updateReactRouterInVue } from './applyReactRouterInVue'
 import globalOptions, {setOptions} from './options'
 
+const unsafePrefix = parseFloat(version) >= 17 ? 'UNSAFE_' : ''
 const optionsName = 'vuereact-combined-options'
 
 const REACT_ALL_HANDLERS = new Set(['onClick', 'onContextMenu', 'onDoubleClick', 'onDrag', 'onDragEnd', 'onDragEnter', 'onDragExit', 'onDragLeave', 'onDragOver', 'onDragStart', 'onDrop', 'onMouseDown', 'onMouseEnter', 'onMouseLeave', 'onMouseMove', 'onMouseOut', 'onMouseOver', 'onMouseUp', 'onChange', 'onInput', 'onInvalid', 'onReset', 'onSubmit', 'onError', 'onLoad', 'onPointerDown', 'onPointerMove', 'onPointerUp', 'onPointerCancel', 'onGotPointerCapture', 'onLostPointerCapture', 'onPointerEnter', 'onPointerLeave', 'onPointerOver', 'onPointerOut', 'onSelect', 'onTouchCancel', 'onTouchEnd', 'onTouchMove', 'onTouchStart', 'onScroll', 'onWheel', 'onAbort', 'onCanPlay', 'onCanPlayThrough', 'onDurationChange', 'onEmptied', 'onEncrypted', 'onEnded', 'onError', 'onLoadedData', 'onLoadedMetadata', 'onLoadStart', 'onPause', 'onPlay', 'onPlaying', 'onProgress', 'onRateChange', 'onSeeked', 'onSeeking', 'onStalled', 'onSuspend', 'onTimeUpdate', 'onVolumeChange', 'onWaiting', 'onLoad', 'onError', 'onAnimationStart', 'onAnimationEnd', 'onAnimationIteration', 'onTransitionEnd', 'onToggle'])
@@ -40,7 +41,7 @@ class GetReactRouterPropsCom extends React.Component {
       location
     })
   }
-  componentWillReceiveProps (nextProps) {
+  [`${unsafePrefix}componentWillReceiveProps`] (nextProps) {
     let { history, match, location } = nextProps
     updateReactRouterInVue({
       history,
@@ -115,7 +116,7 @@ class VueComponentLoader extends React.Component {
     return options.vue.componentWrapHOC(<div ref={this.createVueInstance} />, nativeProps)
   }
 
-  componentWillReceiveProps (nextProps) {
+  [`${unsafePrefix}componentWillReceiveProps`] (nextProps) {
     let { component, [optionsName]: options, ...props } = nextProps
     component = filterVueComponent(component)
     if (this.currentVueComponent !== component) {
