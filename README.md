@@ -31,6 +31,8 @@ normal prop (vue / react) | ✔ | ✔ |
 event (vue / react) | ✔ | ✔ |  
 children (vue / react) | ✔ | ✔ |  
 Provider/Consumer in vue (react) | ✔ |  |  
+Provider/Consumer cross react->vue->...->react | ✔ |  |
+provide/inject cross vue->react->...->vue | ✔ |  |  
 named slots (vue) | ✔ |  |  
 scope slots (vue) | ✔ |  |  
 v-model (vue) | ✔ |  |  
@@ -47,6 +49,7 @@ lazyReactInVue | ✔ |  |
 lazyVueInReact | ✔ |  |  
 第三方组件跨框架使用（比如antd、element） | 支持所有第三方组件 | 基本不支持 |  
 自定义融合包囊层的dom attr | ✔ |  |  
+
 ## 只是高阶组件  
 ````vue
 <!--Vue File-->
@@ -608,8 +611,7 @@ render props | 变向支持 | 通过$scopedSlots，在vue中使用作用域插�
 children(普通插槽) | 完全支持 |  |  
 组件合成事件 | 完全支持 | 通过on属性 |  
 组件原生事件(.native) | 不支持 | react没有这种感念，可以自己包囊div |  
-v-model | 变向支持 | 通过$model，并且支持vue组件中随意自定义model属性 |  
-context传入vue | 暂不支持 | 未来会支持，当前只有在vue中使用redux做了polyfill |  
+v-model | 变向支持 | 通过$model，并且支持vue组件中随意自定义model属性 |   
 html片段中使用react或者vue组件 | 完全支持 | react组件直接传入，vue组件继续通过applyVueInReact转换 |  
 懒加载vue组件 | 完全支持 | 通过lazyVueInReact |  
 redux共享 | 完全支持 | 使用applyRedux |  
