@@ -60,10 +60,12 @@ const VueContainer = React.forwardRef((props, ref) => {
 
   // 判断是否获取过reactRouter
   if (reactRouterInfo.withRouter) {
-    const TargetComponent = reactRouterInfo.withRouter(GetReactRouterPropsCom)
+    if (!VueContainer.RouterTargetComponent) {
+      VueContainer.RouterTargetComponent = reactRouterInfo.withRouter(GetReactRouterPropsCom)
+    }
     // withRouter方法是通过wrappedComponentRef来传递ref的
     return (
-        <TargetComponent {...{...props, [optionsName]: globalOptions}} forwardRef={ref} />
+        <VueContainer.RouterTargetComponent {...{...props, [optionsName]: globalOptions}} forwardRef={ref} />
     )
   } else {
     return <VueComponentLoader {...{...props, [optionsName]: globalOptions}} ref={ref}/>
@@ -521,7 +523,7 @@ export default function applyVueInReact (component, options = {}) {
     component = component.default
   }
 
-  // 使用React.forwardRef之后，组件不再是函数组件，如果使用applyVueInReact处理插槽vue的插槽，需要直接调用返回对象的render方法
+  // // 使用React.forwardRef之后，组件不再是函数组件，如果使用applyVueInReact处理插槽vue的插槽，需要直接调用返回对象的render方法
   return React.forwardRef((props, ref) => {
     return <VueContainer {...props} component={component} ref={ref} {...{[optionsName]: options}}/>
   })
