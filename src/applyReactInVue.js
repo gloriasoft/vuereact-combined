@@ -120,10 +120,10 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
     }
     if ((Object.getPrototypeOf(Component) !== Function.prototype && !(typeof Component === "object" && !Component.render)) || applyReact.catchVueRefs()) {
       return (
-        <Component {...props}
-                   {...{ "data-passed-props": __passedProps }} {...refInfo}>
-          {children}
-        </Component>
+          <Component {...props}
+                     {...{ "data-passed-props": __passedProps }} {...refInfo}>
+            {children}
+          </Component>
       )
     }
     const newProps = { ...props, ...{ "data-passed-props": __passedProps } }
@@ -175,25 +175,31 @@ export default function applyReactInVue(component, options = {}) {
           this.$scopedSlots[key]()
         })
       },
+      updateLastVnodeData(vnode) {
+        this.lastVnodeData = {
+          style: { ...this.formatStyle(vnode.data.style), ...this.formatStyle(vnode.data.staticStyle) },
+          class: Array.from(new Set([...this.formatClass(vnode.data.class), ...this.formatClass(vnode.data.staticClass)])).join(' '),
+        }
+        Object.assign(vnode.data, {
+          staticStyle: null,
+          style: null,
+          staticClass: null,
+          class: null,
+        })
+        return vnode
+      },
       // 清除style和class，避免包囊层被污染
       cleanVnodeStyleClass() {
         let vnode = this.$vnode
+        this.updateLastVnodeData(vnode)
         // 每次$vnode被修改，将vnode.data中的style、staticStyle、class、staticClass记下来并且清除
         Object.defineProperty(this, '$vnode', {
           get() {
             return vnode
           },
           set: (val) => {
-            this.lastVnodeData = {
-              style: { ...this.formatStyle(val.data.style), ...this.formatStyle(val.data.staticStyle) },
-              class: Array.from(new Set([...this.formatClass(val.data.class), ...this.formatClass(val.data.staticClass)])).join(' '),
-            }
-            vnode = {...val, data: {...val.data, ...{
-              staticStyle: null,
-              style: null,
-              staticClass: null,
-              class: null,
-            }}}
+            if (val === vnode) return vnode
+            vnode = this.updateLastVnodeData(val)
             return vnode
           }
         })
@@ -398,7 +404,7 @@ export default function applyReactInVue(component, options = {}) {
         const { portals } = this.parentReactWrapperRef.state
         const index = portals.indexOf(this.reactPortal)
         portals.splice(index, 1)
-        this.parentReactWrapperRef.setState({ portals })
+        this.parentReactWrapperRef.vueRef && this.parentReactWrapperRef.setState({ portals })
         return
       }
       // 删除根节点
