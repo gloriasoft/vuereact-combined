@@ -338,7 +338,13 @@ class VueComponentLoader extends React.Component {
               // Object.assign(this.getChildren.__vnode[0], createElement(applyReactInVue(() => children, {...options, isSlots: true})))
               newSlot = this.getChildren.__vnode
               // 直接修改react的fiberNode，此过程vnode无感知，此方案只是临时
-              newSlot[0].child.reactInstance.setState({ children })
+              if (newSlot[0].child.reactInstance) {
+                newSlot[0].child.reactInstance.setState({ children })
+              } else {
+                this.$nextTick(() => {
+                  newSlot[0].child.reactInstance.setState({ children })
+                })
+              }
             }
             newSlot.reactSlot = children
             return newSlot
