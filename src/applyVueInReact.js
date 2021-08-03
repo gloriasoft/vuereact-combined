@@ -63,7 +63,7 @@ const VueContainer = React.forwardRef((props, ref) => {
     const TargetComponent = reactRouterInfo.withRouter(GetReactRouterPropsCom)
     // withRouter方法是通过wrappedComponentRef来传递ref的
     return (
-      <TargetComponent {...{...props, [optionsName]: globalOptions}} forwardRef={ref} />
+        <TargetComponent {...{...props, [optionsName]: globalOptions}} forwardRef={ref} />
     )
   } else {
     return <VueComponentLoader {...{...props, [optionsName]: globalOptions}} ref={ref}/>
@@ -440,7 +440,9 @@ class VueComponentLoader extends React.Component {
     Vue.nextTick(() => {
       const targetId = '__vue_wrapper_container_' + (Math.random() + '').substr(2)
       targetElement.id = targetId
-      let parentInstance = this._reactInternals.return
+      // 获取react的fiber实例
+      const fiberNode = this._reactInternals || this._reactInternalFiber
+      let parentInstance = fiberNode.return
       let vueWrapperRef
       // 向上查找react包囊层
       while (parentInstance) {
