@@ -119,7 +119,6 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
       return this.state.children || this.props.children
     }
     if ((Object.getPrototypeOf(Component) !== Function.prototype && !(typeof Component === "object" && !Component.render)) || applyReact.catchVueRefs()) {
-      refInfo.ref = this.setRef
       return (
         <Component {...props}
                    {...{ "data-passed-props": __passedProps }} {...refInfo}>
@@ -142,6 +141,11 @@ export default function applyReactInVue(component, options = {}) {
   // 处理附加参数
   options = setOptions(options, undefined, true)
   return {
+    data() {
+      return {
+        portals: []
+      }
+    },
     created() {
       // this.vnodeData = this.$vnode.data
       this.cleanVnodeStyleClass()
@@ -156,9 +160,12 @@ export default function applyReactInVue(component, options = {}) {
     render(createElement) {
       this.slotsInit()
       const { style, ...attrs } = options.react.componentWrapAttrs
-      return createElement(options.react.componentWrap, { ref: "react", attrs, style })
+      return createElement(options.react.componentWrap, { ref: "react", attrs, style }, this.portals.map((Portal, index) => Portal(createElement, index)))
     },
     methods: {
+      pushVuePortal(vuePortal) {
+        this.portals.push(vuePortal)
+      },
       // hack!!!! 一定要在render函数李触发，才能激活具名插槽
       slotsInit() {
         Object.keys(this.$slots).forEach((key) => {
@@ -351,7 +358,7 @@ export default function applyReactInVue(component, options = {}) {
                   reactRootComponent,
                   container
               )
-              reactWrapperRef.pushPortal(this.reactPortal)
+              reactWrapperRef.pushReactPortal(this.reactPortal)
               return
             }
             ReactDOM.render(

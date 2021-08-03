@@ -5,6 +5,8 @@ import applyReactInVue from './applyReactInVue'
 import vueRootInfo from './vueRootInfo'
 import { reactRouterInfo, setReactRouterInVue, updateReactRouterInVue } from './applyReactRouterInVue'
 import globalOptions, {setOptions} from './options'
+import ReactDOM from "react-dom";
+import {MountingPortal} from 'portal-vue'
 
 const unsafePrefix = parseFloat(version) >= 17 ? 'UNSAFE_' : ''
 const optionsName = 'vuereact-combined-options'
@@ -82,9 +84,9 @@ class VueComponentLoader extends React.Component {
     this.vueComponentContainer = this.createVueComponentContainer()
   }
 
-  pushPortal (portal) {
+  pushReactPortal (reactPortal) {
     const { portals } = this.state
-    portals.push(portal)
+    portals.push(reactPortal)
     this.setState({ portals })
   }
 
@@ -128,6 +130,13 @@ class VueComponentLoader extends React.Component {
   }
 
   componentWillUnmount () {
+    // 删除portal
+    if (this.vuePortal) {
+      const { portals } = this.parentVueWrapperRef
+      const index = portals.indexOf(this.vuePortal)
+      portals.splice(index, 1)
+      return
+    }
     this.vueInstance.$destroy()
   }
 
@@ -228,14 +237,25 @@ class VueComponentLoader extends React.Component {
       }
       return scopedSlots
     }
+
+    function setVueInstance(instance) {
+      if (!this.vueInstance) {
+        this.vueInstance = instance
+      }
+    }
+    setVueInstance = setVueInstance.bind(this)
     // 将vue组件的inheritAttrs设置为false，以便组件可以顺利拿到任何类型的attrs
     // 这一步不确定是否多余，但是vue默认是true，导致属性如果是函数，又不在props中，会出警告，正常都需要在组件内部自己去设置false
     // component.inheritAttrs = false
-    // 创建vue实例
-    this.vueInstance = new Vue({
+    const vueOptionsData = { ...this.doSync(this.doVModel(props)), 'data-passed-props': __passedProps }
+    const vueOptions = {
       ...vueRootInfo,
-      el: targetElement,
-      data: { ...this.doSync(this.doVModel(props)), 'data-passed-props': __passedProps },
+      data() {
+        return vueOptionsData
+      },
+      created() {
+        setVueInstance(this)
+      },
       methods: {
         // 获取具名插槽
         // 将react组件传入的$slots属性逐个转成vue组件，但是透传的插槽不做处理
@@ -397,23 +417,58 @@ class VueComponentLoader extends React.Component {
         // 这一步有点繁琐，但是又必须得处理
         const attrs = filterAttrs({ ...lastProps })
         return createElement(
-          'use_vue_wrapper',
-          {
-            props: lastProps,
-            on: lastOn,
-            nativeOn,
-            attrs,
-            'class': className,
-            style,
-            scopedSlots: { ...scopedSlots }
-          },
-          lastSlots
+            'use_vue_wrapper',
+            {
+              props: lastProps,
+              on: lastOn,
+              nativeOn,
+              attrs,
+              'class': className,
+              style,
+              scopedSlots: { ...scopedSlots }
+            },
+            lastSlots
         )
       },
       components: {
         'use_vue_wrapper': component
       }
+    }
+
+    if (!targetElement) return
+
+    Vue.nextTick(() => {
+      const targetId = '__vue_wrapper_container_' + (Math.random() + '').substr(2)
+      targetElement.id = targetId
+      let parentInstance = this._reactInternals.return
+      let vueWrapperRef
+      // 向上查找react包囊层
+      while (parentInstance) {
+        if (parentInstance.stateNode?.parentVueWrapperRef) {
+          vueWrapperRef = parentInstance.stateNode.parentVueWrapperRef
+          break
+        }
+        if (parentInstance.stateNode?.vueWrapperRef) {
+          vueWrapperRef = parentInstance.stateNode.vueWrapperRef
+          break
+        }
+        parentInstance = parentInstance.return
+      }
+      // 如果存在包囊层，则激活portal
+      if (vueWrapperRef) {
+        // 存储包囊层引用
+        this.parentVueWrapperRef = vueWrapperRef
+        // 存储portal引用
+        this.vuePortal = (createElement, key) => createElement(MountingPortal, {props: {mountTo: '#' + targetId, slim:true, targetSlim: true}, key}, [createElement(vueOptions)])
+        vueWrapperRef.pushVuePortal(this.vuePortal)
+        return
+      }
+
+
+      // 创建vue实例
+      this.vueInstance = new Vue({...vueOptions, el: targetElement})
     })
+
   }
 
   updateVueComponent (nextComponent) {
