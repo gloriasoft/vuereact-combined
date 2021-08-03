@@ -278,7 +278,13 @@ class VueComponentLoader extends React.Component {
               } else {
                 newSlot = this.getNamespaceSlots.__namespaceSlots[i]
                 // 触发通信层更新fiberNode
-                newSlot[0].child.reactInstance.setState({ children: slot })
+                if (newSlot[0].child.reactInstance) {
+                  newSlot[0].child.reactInstance.setState({ children: slot })
+                } else {
+                  this.$nextTick(() => {
+                    newSlot[0].child.reactInstance.setState({ children: slot })
+                  })
+                }
               }
               newSlot.reactSlot = slot
               return newSlot
@@ -309,7 +315,13 @@ class VueComponentLoader extends React.Component {
                 } else {
                   newSlot = this.getScopedSlots.__scopeSlots[i]
                   // 触发通信层更新fiberNode
-                  newSlot.child.reactInstance.setState({ children: scopedSlot(context) })
+                  if (newSlot.child.reactInstance) {
+                    newSlot.child.reactInstance.setState({ children: scopedSlot(context) })
+                  } else {
+                    this.$nextTick(() => {
+                      newSlot.child.reactInstance.setState({ children: scopedSlot(context) })
+                    })
+                  }
                 }
                 return newSlot
               }
