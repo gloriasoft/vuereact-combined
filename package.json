@@ -56,5 +56,8 @@
     "vuex",
     "lazyvue",
     "lazyreact"
-  ]
+  ],
+  "dependencies": {
+    "portal-vue": "^2.1.7"
+  }
 }

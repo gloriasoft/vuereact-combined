@@ -25,7 +25,7 @@ const shared = {
       }
     })
   ],
-  external: ['react', 'react-dom', 'vue'],
+  external: ['react', 'react-dom', 'vue', 'portal-vue'],
 }
 
 export default [
@@ -37,7 +37,7 @@ export default [
       globals: {
         react: 'React',
         'react-dom': 'ReactDOM',
-        vue: 'Vue',
+        vue: 'Vue'
       },
     },
   }),
