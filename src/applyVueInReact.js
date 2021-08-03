@@ -144,7 +144,6 @@ class VueComponentLoader extends React.Component {
 
   // 处理v-model
   doVModel (props) {
-    return props
     let { $model, ...newProps } = props
     if ($model === undefined) return props
     // 考虑到了自定义v-model
@@ -161,7 +160,8 @@ class VueComponentLoader extends React.Component {
     } else {
       newProps.on = { ...newProps.on, ...{ [vueInstanceModelOption.event]: $model.setter || (() => {}) } }
     }
-    return { ...newProps, ...modelProp }
+    // return { ...newProps, ...modelProp }
+    return { ...newProps }
   }
 
   // 处理sync
