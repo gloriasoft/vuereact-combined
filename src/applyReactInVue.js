@@ -169,7 +169,7 @@ export default function applyReactInVue(component, options = {}) {
       // hack!!!! 一定要在render函数李触发，才能激活具名插槽
       slotsInit() {
         Object.keys(this.$slots).forEach((key) => {
-          this.$slots[key]
+          return this.$slots[key]
         })
         Object.keys(this.$scopedSlots).forEach((key) => {
           this.$scopedSlots[key]()

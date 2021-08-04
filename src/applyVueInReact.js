@@ -32,10 +32,7 @@ function getOptions (Component) {
 class GetReactRouterPropsCom extends React.Component {
   constructor (props) {
     super(props)
-    let { history, match, location, forwardRef, ...newProps } = props
-    this.state = {
-      ...newProps
-    }
+    let { history, match, location } = props
     // 设置react router属性绑定倒所有的vue的原型上
     setReactRouterInVue({
       history,
@@ -52,7 +49,8 @@ class GetReactRouterPropsCom extends React.Component {
     })
   }
   render () {
-    return <VueComponentLoader {...this.state} ref={ this.props.forwardRef } />
+    const { history, match, location, ...newProps } = this.props
+    return <VueComponentLoader {...newProps} ref={ this.props.forwardRef } />
   }
 }
 const VueContainer = React.forwardRef((props, ref) => {
@@ -145,7 +143,6 @@ class VueComponentLoader extends React.Component {
   // 处理v-model
   doVModel (props) {
     let { $model, ...newProps } = props
-    return {...newProps}
     if ($model === undefined) return props
     // 考虑到了自定义v-model
     let vueInstanceModelOption = { ...{ prop: 'value', event: 'input' }, ...getOptions(this.currentVueComponent).model }
@@ -280,14 +277,9 @@ class VueComponentLoader extends React.Component {
                 this.getNamespaceSlots.__namespaceSlots[i] = newSlot
               } else {
                 newSlot = this.getNamespaceSlots.__namespaceSlots[i]
-                // 触发通信层更新fiberNode
-                if (newSlot[0].child.reactInstance) {
+                this.$nextTick(() => {
                   newSlot[0].child.reactInstance.setState({ children: slot })
-                } else {
-                  this.$nextTick(() => {
-                    newSlot[0].child.reactInstance.setState({ children: slot })
-                  })
-                }
+                })
               }
               newSlot.reactSlot = slot
               return newSlot
@@ -318,13 +310,9 @@ class VueComponentLoader extends React.Component {
                 } else {
                   newSlot = this.getScopedSlots.__scopeSlots[i]
                   // 触发通信层更新fiberNode
-                  if (newSlot.child.reactInstance) {
+                  this.$nextTick(() => {
                     newSlot.child.reactInstance.setState({ children: scopedSlot(context) })
-                  } else {
-                    this.$nextTick(() => {
-                      newSlot.child.reactInstance.setState({ children: scopedSlot(context) })
-                    })
-                  }
+                  })
                 }
                 return newSlot
               }
@@ -353,13 +341,9 @@ class VueComponentLoader extends React.Component {
               // Object.assign(this.getChildren.__vnode[0], createElement(applyReactInVue(() => children, {...options, isSlots: true})))
               newSlot = this.getChildren.__vnode
               // 直接修改react的fiberNode，此过程vnode无感知，此方案只是临时
-              if (newSlot[0].child.reactInstance) {
+              this.$nextTick(() => {
                 newSlot[0].child.reactInstance.setState({ children })
-              } else {
-                this.$nextTick(() => {
-                  newSlot[0].child.reactInstance.setState({ children })
-                })
-              }
+              })
             }
             newSlot.reactSlot = children
             return newSlot
