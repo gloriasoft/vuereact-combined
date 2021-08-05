@@ -4,6 +4,8 @@
   "version": "1.1.2",
   "description": "Vue和React快捷集成的工具包，并且适合复杂的集成场景",
   "main": "dist/vuereact.umd.js",
+  "module": "dist/vuereact.esm.js",
+  "typings": "types/vuereact.d.ts",
   "scripts": {
     "build": "cross-env BABEL_ENV=rollup rollup -c"
   },
@@ -17,13 +19,14 @@
     "url": "https://github.com/devilwjp/vuereact-combined/issues"
   },
   "files": [
-    "dist"
+    "dist",
+    "types"
   ],
   "homepage": "https://github.com/devilwjp/vuereact-combined#readme",
   "peerDependencies": {
     "react": ">= 16.3.0",
-    "react-dom": ">= 16.2.0",
-    "vue": ">= 2.6"
+    "react-dom": ">= 16.3.0",
+    "vue": ">= 2.6.0"
   },
   "devDependencies": {
     "@babel/core": "^7.7.4",
@@ -58,6 +61,9 @@
     "lazyreact"
   ],
   "dependencies": {
-    "portal-vue": "^2.1.7"
+    "portal-vue": "^2.1.7",
+    "react": ">= 16.3.0",
+    "react-dom": ">= 16.3.0",
+    "vue": ">= 2.6.0"
   }
 }

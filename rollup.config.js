@@ -41,4 +41,16 @@ export default [
       },
     },
   }),
+  Object.assign({}, shared, {
+    output: {
+      file: 'dist/vuereact.esm.js',
+      format: 'esm',
+      name: 'vuereact',
+      globals: {
+        react: 'React',
+        'react-dom': 'ReactDOM',
+        vue: 'Vue'
+      },
+    },
+  }),
 ]
