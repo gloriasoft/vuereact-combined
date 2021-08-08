@@ -2,6 +2,7 @@ import React, {version} from "react"
 import ReactDOM from "react-dom"
 import applyVueInReact, { VueContainer } from "./applyVueInReact"
 import options, { setOptions } from "./options"
+
 // vueRootInfo是为了保存vue的root节点options部分信息，现在保存router、store，在applyVueInReact方法中创建vue的中间件实例时会被设置
 // 为了使applyReactInVue -> applyVueInReact之后的vue组件依旧能引用vuex和vue router
 import vueRootInfo from "./vueRootInfo"
@@ -320,10 +321,15 @@ export default function applyReactInVue(component, options = {}) {
         // 如果不传入组件，就作为更新
         if (!update) {
           const Component = createReactContainer(component, options, this)
+          const reactEvent = {}
+          Object.keys(__passedProps.on).forEach((key) => {
+            reactEvent['on' + key.replace(/^(\w)/, ($, $1) => $1.toUpperCase())] = __passedProps.on[key]
+          })
           let reactRootComponent = <Component
               {...__passedPropsRest}
               {...this.$attrs}
-              {...__passedProps.on}
+              //{...__passedProps.on}
+              {...reactEvent}
               {...{ children }}
               {...lastNormalSlots}
               {...scopedSlots}
@@ -377,10 +383,15 @@ export default function applyReactInVue(component, options = {}) {
           // 异步合并更新
           clearTimeout(this.updateTimer)
           this.updateTimer = setTimeout(() => {
+            const reactEvent = {}
+            Object.keys(this.$listeners).forEach((key) => {
+              reactEvent['on' + key.replace(/^(\w)/, ($, $1) => $1.toUpperCase())] = this.$listeners[key]
+            })
             this.reactInstance.setState({
               ...__passedPropsRest,
               ...this.$attrs,
-              ...this.$listeners,
+              // ...this.$listeners,
+              ...reactEvent,
               ...{ children },
               ...lastNormalSlots,
               ...scopedSlots,

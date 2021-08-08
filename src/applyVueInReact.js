@@ -7,11 +7,10 @@ import { reactRouterInfo, setReactRouterInVue, updateReactRouterInVue } from './
 import globalOptions, {setOptions} from './options'
 import ReactDOM from "react-dom";
 import {MountingPortal} from 'portal-vue'
+import REACT_ALL_HANDLERS from './reactAllHandles'
 
 const unsafePrefix = parseFloat(version) >= 17 ? 'UNSAFE_' : ''
 const optionsName = 'vuereact-combined-options'
-
-const REACT_ALL_HANDLERS = new Set(['onClick', 'onContextMenu', 'onDoubleClick', 'onDrag', 'onDragEnd', 'onDragEnter', 'onDragExit', 'onDragLeave', 'onDragOver', 'onDragStart', 'onDrop', 'onMouseDown', 'onMouseEnter', 'onMouseLeave', 'onMouseMove', 'onMouseOut', 'onMouseOver', 'onMouseUp', 'onChange', 'onInput', 'onInvalid', 'onReset', 'onSubmit', 'onError', 'onLoad', 'onPointerDown', 'onPointerMove', 'onPointerUp', 'onPointerCancel', 'onGotPointerCapture', 'onLostPointerCapture', 'onPointerEnter', 'onPointerLeave', 'onPointerOver', 'onPointerOut', 'onSelect', 'onTouchCancel', 'onTouchEnd', 'onTouchMove', 'onTouchStart', 'onScroll', 'onWheel', 'onAbort', 'onCanPlay', 'onCanPlayThrough', 'onDurationChange', 'onEmptied', 'onEncrypted', 'onEnded', 'onError', 'onLoadedData', 'onLoadedMetadata', 'onLoadStart', 'onPause', 'onPlay', 'onPlaying', 'onProgress', 'onRateChange', 'onSeeked', 'onSeeking', 'onStalled', 'onSuspend', 'onTimeUpdate', 'onVolumeChange', 'onWaiting', 'onLoad', 'onError', 'onAnimationStart', 'onAnimationEnd', 'onAnimationIteration', 'onTransitionEnd', 'onToggle'])
 
 // 根据传入的是否是字符串，判断是否需要获取Vue的全局组件
 function filterVueComponent (component) {
