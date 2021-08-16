@@ -68,6 +68,7 @@ const VueContainer = React.forwardRef((props, ref) => {
     return <VueComponentLoader {...{...props, [optionsName]: globalOptions}} ref={ref}/>
   }
 })
+
 export {
   VueContainer
 }
@@ -114,7 +115,7 @@ class VueComponentLoader extends React.Component {
       }
     }
 
-    return options.vue.componentWrapHOC(<div ref={this.createVueInstance} />, nativeProps)
+    return options.vue.componentWrapHOC(<div ref={this.createVueInstance} key={null} />, nativeProps)
   }
 
   [`${unsafePrefix}componentWillReceiveProps`] (nextProps) {
@@ -125,7 +126,7 @@ class VueComponentLoader extends React.Component {
     }
     // Object.assign(this.vueInstance.$data.children, this.doVModel(props).children)
     // 更改vue组件的data
-    Object.assign(this.vueInstance.$data, this.doVModel(props))
+    this.vueInstance && Object.assign(this.vueInstance.$data, this.doVModel(props))
   }
 
   componentWillUnmount () {
@@ -272,7 +273,7 @@ class VueComponentLoader extends React.Component {
               // 使用单例模式进行缓存，类似getChildren
               let newSlot
               if (!this.getNamespaceSlots.__namespaceSlots[i]) {
-                newSlot = [createElement(applyReactInVue(() => slot, { ...options, isSlots: true }), { slot: slotName })]
+                newSlot = [createElement(applyReactInVue(() => slot, { ...options, isSlots: true, wrapInstance: VueContainerInstance }), { slot: slotName })]
                 this.getNamespaceSlots.__namespaceSlots[i] = newSlot
               } else {
                 newSlot = this.getNamespaceSlots.__namespaceSlots[i]
@@ -304,7 +305,7 @@ class VueComponentLoader extends React.Component {
                 // 使用单例模式进行缓存，类似getChildren
                 let newSlot
                 if (!this.getScopedSlots.__scopeSlots[i]) {
-                  newSlot = createElement(applyReactInVue(() => scopedSlot(context), { ...options, isSlots: true }))
+                  newSlot = createElement(applyReactInVue(() => scopedSlot(context), { ...options, isSlots: true, wrapInstance: VueContainerInstance }))
                   this.getScopedSlots.__scopeSlots[i] = newSlot
                 } else {
                   newSlot = this.getScopedSlots.__scopeSlots[i]
@@ -333,7 +334,7 @@ class VueComponentLoader extends React.Component {
             }
             let newSlot
             if (!this.getChildren.__vnode) {
-              newSlot = [createElement(applyReactInVue(() => children, { ...options, isSlots: true }))]
+              newSlot = [createElement(applyReactInVue(() => children, { ...options, isSlots: true, wrapInstance: VueContainerInstance }))]
               this.getChildren.__vnode = newSlot
             } else {
               // 此步vnode的浅更新可以省略
@@ -461,11 +462,11 @@ class VueComponentLoader extends React.Component {
         parentInstance = parentInstance.return
       }
       // 如果存在包囊层，则激活portal
-      if (vueWrapperRef) {
+      if (vueWrapperRef && document.getElementById(targetId)) {
         // 存储包囊层引用
         this.parentVueWrapperRef = vueWrapperRef
         // 存储portal引用
-        this.vuePortal = (createElement, key) => createElement(MountingPortal, {props: {mountTo: '#' + targetId, slim:true, targetSlim: true}, key}, [createElement(vueOptions)])
+        this.vuePortal = (createElement, key) => createElement(MountingPortal, {props: {mountTo: '#' + targetId, slim:true, targetSlim: true}, key: targetId}, [createElement(vueOptions)])
         vueWrapperRef.pushVuePortal(this.vuePortal)
         return
       }
@@ -479,6 +480,7 @@ class VueComponentLoader extends React.Component {
 
   updateVueComponent (nextComponent) {
     this.currentVueComponent = nextComponent
+    if (!this.vueInstance) return
 
     // 使用$forceUpdate强制重新渲染vue实例，因为此方法只会重新渲染当前实例和插槽，不会重新渲染子组件，所以不会造成性能问题
     // $options.components包含了vue实例中所对应的组件序列, $option是只读,但是确实可以修改components属性,依靠此实现了动态组件替换
