@@ -2,6 +2,7 @@ import React, {version} from "react"
 import ReactDOM from "react-dom"
 import applyVueInReact, { VueContainer } from "./applyVueInReact"
 import options, { setOptions } from "./options"
+
 // vueRootInfo是为了保存vue的root节点options部分信息，现在保存router、store，在applyVueInReact方法中创建vue的中间件实例时会被设置
 // 为了使applyReactInVue -> applyVueInReact之后的vue组件依旧能引用vuex和vue router
 import vueRootInfo from "./vueRootInfo"
@@ -48,7 +49,12 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
     return {
       inheritAttrs: false,
       __fromReactSlot: true,
-      render: (createElement) => createElement(options.react.slotWrap, { attrs, style }, children),
+      render(createElement) {
+        if (children instanceof Function) {
+          children = children(this)
+        }
+        return createElement(options.react.slotWrap, { attrs, style }, children)
+      },
     }
   }
 
@@ -86,7 +92,7 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
           const vueSlot = props[i]
           // 执行applyVueInReact方法将直接获得react组件对象，无需使用jsx
           // props[i] = { ...applyVueInReact(this.createSlot(props[i]))() }
-          props[i] = { ...applyVueInReact(this.createSlot(props[i]), { ...options, isSlots: true }).render() }
+          props[i] = { ...applyVueInReact(this.createSlot(props[i]), { ...options, isSlots: true, wrapInstance }).render() }
           props[i].vueSlot = vueSlot
         } else {
           props[i] = props[i].reactSlot
@@ -102,8 +108,28 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
     if (children != null) {
       if (!children.reactSlot) {
         const vueSlot = children
-        children = { ...applyVueInReact(this.createSlot(children), { ...options, isSlots: true }).render() }
+        // 自定义插槽处理
+        if (options.defaultSlotsFormatter){
+          children = options.defaultSlotsFormatter(children, (children, customOptions = {}, division) => {
+            if (division) {
+              if (children && children[0]) {
+                return children.map((child, index) => {
+                  return applyVueInReact(this.createSlot(child instanceof Function ? child: [child]), { ...options, ...customOptions, isSlots: true, wrapInstance }).render({key: child?.data?.key || index})
+                })
+              }
+            }
+            return applyVueInReact(this.createSlot(children), { ...options, ...customOptions, isSlots: true, wrapInstance }).render()
+          })
+          if (children instanceof Array) {
+            children = [...children]
+          } else {
+            children = {...children}
+          }
+        } else {
+          children = { ...applyVueInReact(this.createSlot(children), { ...options, isSlots: true, wrapInstance }).render() }
+        }
         children.vueSlot = vueSlot
+
       } else {
         children = children.reactSlot
       }
@@ -141,6 +167,7 @@ export default function applyReactInVue(component, options = {}) {
   // 处理附加参数
   options = setOptions(options, undefined, true)
   return {
+    originReactComponent: component,
     data() {
       return {
         portals: []
@@ -247,12 +274,13 @@ export default function applyReactInVue(component, options = {}) {
       },
       // 用多阶函数解决作用域插槽的传递问题
       getScopeSlot(slotFunction) {
+        const _this = this
         function scopedSlotFunction(createReactSlot) {
           function getSlot(context) {
             if (slotFunction.reactFunction) {
               return slotFunction.reactFunction(context)
             }
-            return applyVueInReact(createReactSlot(slotFunction(context)), { ...options, isSlots: true }).render()
+            return applyVueInReact(createReactSlot(slotFunction(context)), { ...options, isSlots: true, wrapInstance: _this }).render()
           }
           getSlot.vueFunction = slotFunction
           return getSlot
@@ -320,10 +348,15 @@ export default function applyReactInVue(component, options = {}) {
         // 如果不传入组件，就作为更新
         if (!update) {
           const Component = createReactContainer(component, options, this)
+          const reactEvent = {}
+          Object.keys(__passedProps.on).forEach((key) => {
+            reactEvent['on' + key.replace(/^(\w)/, ($, $1) => $1.toUpperCase())] = __passedProps.on[key]
+          })
           let reactRootComponent = <Component
               {...__passedPropsRest}
               {...this.$attrs}
-              {...__passedProps.on}
+              //{...__passedProps.on}
+              {...reactEvent}
               {...{ children }}
               {...lastNormalSlots}
               {...scopedSlots}
@@ -374,22 +407,30 @@ export default function applyReactInVue(component, options = {}) {
           })
         } else {
           // 更新
-          // 异步合并更新
-          clearTimeout(this.updateTimer)
-          this.updateTimer = setTimeout(() => {
-            this.reactInstance.setState({
-              ...__passedPropsRest,
-              ...this.$attrs,
-              ...this.$listeners,
-              ...{ children },
-              ...lastNormalSlots,
-              ...scopedSlots,
-              ...{ "data-passed-props": __passedProps },
-              ...(this.lastVnodeData.class ? {className: this.lastVnodeData.class}: {}),
-              ...{...hashMap},
-              style: this.lastVnodeData.style,
+          // Promise异步合并更新
+          if (!this.cache) {
+            this.$nextTick(() => {
+              this.reactInstance && this.reactInstance.setState(this.cache)
+              this.cache = null
             })
+          }
+          const reactEvent = {}
+          Object.keys(this.$listeners).forEach((key) => {
+            reactEvent['on' + key.replace(/^(\w)/, ($, $1) => $1.toUpperCase())] = this.$listeners[key]
           })
+          this.cache = {...this.cache || {}, ...{
+            ...__passedPropsRest,
+            ...this.$attrs,
+            // ...this.$listeners,
+            ...reactEvent,
+            ...{ children },
+            ...lastNormalSlots,
+            ...scopedSlots,
+            ...{ "data-passed-props": __passedProps },
+            ...(this.lastVnodeData.class ? {className: this.lastVnodeData.class}: {}),
+            ...{...hashMap},
+            style: this.lastVnodeData.style,
+          }}
         }
       },
     },
