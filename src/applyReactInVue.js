@@ -41,6 +41,7 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
       ...(options.isSlots ? { children: Component } : {}),
     }
     this.setRef = this.setRef.bind(this)
+    this.vueInReactCall = this.vueInReactCall.bind(this)
   }
 
   // 对于插槽的处理仍然需要将VNode转换成React组件
@@ -73,6 +74,17 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
       }
     }
     return false
+  }
+
+  vueInReactCall(children, customOptions = {}, division) {
+    if (division) {
+      if (children && children[0]) {
+        return children.map((child, index) => {
+          return applyVueInReact(this.createSlot(child instanceof Function ? child: [child]), { ...options, ...customOptions, isSlots: true, wrapInstance }).render({key: child?.data?.key || index})
+        })
+      }
+    }
+    return applyVueInReact(this.createSlot(children), { ...options, ...customOptions, isSlots: true, wrapInstance }).render()
   }
 
   render() {
@@ -110,16 +122,7 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
         const vueSlot = children
         // 自定义插槽处理
         if (options.defaultSlotsFormatter){
-          children = options.defaultSlotsFormatter(children, (children, customOptions = {}, division) => {
-            if (division) {
-              if (children && children[0]) {
-                return children.map((child, index) => {
-                  return applyVueInReact(this.createSlot(child instanceof Function ? child: [child]), { ...options, ...customOptions, isSlots: true, wrapInstance }).render({key: child?.data?.key || index})
-                })
-              }
-            }
-            return applyVueInReact(this.createSlot(children), { ...options, ...customOptions, isSlots: true, wrapInstance }).render()
-          })
+          children = options.defaultSlotsFormatter(children, this.vueInReactCall)
           if (children instanceof Array) {
             children = [...children]
           } else {
@@ -152,7 +155,13 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
           </Component>
       )
     }
-    const newProps = { ...props, ...{ "data-passed-props": __passedProps } }
+
+    let finalProps = props
+    // 自定义处理参数
+    if (options.defaultPropsFormatter) {
+      finalProps = options.defaultPropsFormatter(props, this.vueInReactCall)
+    }
+    const newProps = { ...finalProps, ...{ "data-passed-props": __passedProps } }
     return <FunctionComponentWrap passedProps={newProps} component={Component} {...refInfo}>{children}</FunctionComponentWrap>
   }
 }
