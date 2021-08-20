@@ -137,7 +137,7 @@ class VueComponentLoader extends React.Component {
       portals.splice(index, 1)
       return
     }
-    this.vueInstance.$destroy()
+    this.vueInstance && this.vueInstance.$destroy()
   }
 
   // 处理v-model
