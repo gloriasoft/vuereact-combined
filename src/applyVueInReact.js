@@ -298,20 +298,20 @@ class VueComponentLoader extends React.Component {
             if (!tempScopedSlots.hasOwnProperty(i)) continue
             let reactFunction = tempScopedSlots[i]
             tempScopedSlots[i] = ((scopedSlot) => {
-              return (context) => {
+              return (...args) => {
                 if (scopedSlot.vueFunction) {
-                  return scopedSlot.vueFunction(context)
+                  return scopedSlot.vueFunction.apply(this, args)
                 }
                 // 使用单例模式进行缓存，类似getChildren
                 let newSlot
                 if (!this.getScopedSlots.__scopeSlots[i]) {
-                  newSlot = createElement(applyReactInVue(() => scopedSlot(context), { ...options, isSlots: true, wrapInstance: VueContainerInstance }))
+                  newSlot = createElement(applyReactInVue(() => scopedSlot.apply(this, args), { ...options, isSlots: true, wrapInstance: VueContainerInstance }))
                   this.getScopedSlots.__scopeSlots[i] = newSlot
                 } else {
                   newSlot = this.getScopedSlots.__scopeSlots[i]
                   // 触发通信层更新fiberNode
                   this.$nextTick(() => {
-                    newSlot.child.reactInstance.setState({ children: scopedSlot(context) })
+                    newSlot.child.reactInstance.setState({ children: scopedSlot.apply(this, args) })
                   })
                 }
                 return newSlot
