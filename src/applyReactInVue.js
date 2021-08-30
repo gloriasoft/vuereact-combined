@@ -285,11 +285,11 @@ export default function applyReactInVue(component, options = {}) {
       getScopeSlot(slotFunction) {
         const _this = this
         function scopedSlotFunction(createReactSlot) {
-          function getSlot(context) {
+          function getSlot(...args) {
             if (slotFunction.reactFunction) {
-              return slotFunction.reactFunction(context)
+              return slotFunction.reactFunction.apply(this, args)
             }
-            return applyVueInReact(createReactSlot(slotFunction(context)), { ...options, isSlots: true, wrapInstance: _this }).render()
+            return applyVueInReact(createReactSlot(slotFunction.apply(this, args)), { ...options, isSlots: true, wrapInstance: _this }).render()
           }
           getSlot.vueFunction = slotFunction
           return getSlot
