@@ -278,9 +278,9 @@ class VueComponentLoader extends React.Component {
                 this.getNamespaceSlots.__namespaceSlots[i] = newSlot
               } else {
                 newSlot = this.getNamespaceSlots.__namespaceSlots[i]
-                // this.$nextTick(() => {
+                this.$nextTick(() => {
                   newSlot[0].child.reactInstance.setState({ children: slot })
-                // })
+                })
               }
               newSlot.reactSlot = slot
               return newSlot
@@ -311,9 +311,9 @@ class VueComponentLoader extends React.Component {
                 } else {
                   newSlot = this.getScopedSlots.__scopeSlots[i]
                   // 触发通信层更新fiberNode
-                  // this.$nextTick(() => {
+                  this.$nextTick(() => {
                     newSlot.child.reactInstance.setState({ children: scopedSlot.apply(this, args) })
-                  // })
+                  })
                 }
                 return newSlot
               }
@@ -342,9 +342,9 @@ class VueComponentLoader extends React.Component {
               // Object.assign(this.getChildren.__vnode[0], createElement(applyReactInVue(() => children, {...options, isSlots: true})))
               newSlot = this.getChildren.__vnode
               // 直接修改react的fiberNode，此过程vnode无感知，此方案只是临时
-              // this.$nextTick(() => {
+              this.$nextTick(() => {
                 newSlot[0].child.reactInstance.setState({ children })
-              // })
+              })
             }
             newSlot.reactSlot = children
             return newSlot
@@ -452,7 +452,6 @@ class VueComponentLoader extends React.Component {
       const fiberNode = this._reactInternals || this._reactInternalFiber
       let parentInstance = fiberNode.return
       // 向上查找react包囊层
-      console.log(44444, parentInstance)
       while (parentInstance) {
         if (parentInstance.stateNode?.parentVueWrapperRef) {
           vueWrapperRef = parentInstance.stateNode.parentVueWrapperRef
@@ -480,7 +479,6 @@ class VueComponentLoader extends React.Component {
       return
     }
 
-    console.log(2222)
     // 创建vue实例
     this.vueInstance = new Vue({...vueOptions, el: targetElement})
     // })
