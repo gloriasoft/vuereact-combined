@@ -42,6 +42,7 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
     }
     this.setRef = this.setRef.bind(this)
     this.vueInReactCall = this.vueInReactCall.bind(this)
+    this.vueWrapperRef = wrapInstance
   }
 
   // 对于插槽的处理仍然需要将VNode转换成React组件
@@ -147,21 +148,20 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
     if (options.isSlots) {
       return this.state.children || this.props.children
     }
-    if ((Object.getPrototypeOf(Component) !== Function.prototype && !(typeof Component === "object" && !Component.render)) || applyReact.catchVueRefs()) {
-      return (
-          <Component {...props}
-                     {...{ "data-passed-props": __passedProps }} {...refInfo}>
-            {children}
-          </Component>
-      )
-    }
-
     let finalProps = props
     // 自定义处理参数
     if (options.defaultPropsFormatter) {
       finalProps = options.defaultPropsFormatter(props, this.vueInReactCall)
     }
     const newProps = { ...finalProps, ...{ "data-passed-props": __passedProps } }
+    if ((Object.getPrototypeOf(Component) !== Function.prototype && !(typeof Component === "object" && !Component.render)) || applyReact.catchVueRefs()) {
+      return (
+          <Component {...newProps}
+                     {...{ "data-passed-props": __passedProps }} {...refInfo}>
+            {children}
+          </Component>
+      )
+    }
     return <FunctionComponentWrap passedProps={newProps} component={Component} {...refInfo}>{children}</FunctionComponentWrap>
   }
 }
@@ -297,7 +297,7 @@ export default function applyReactInVue(component, options = {}) {
         scopedSlotFunction.__scopedSlot = true
         return scopedSlotFunction
       },
-      mountReactComponent(update) {
+      mountReactComponent(update, isChildrenUpdate) {
         // 先提取透传属性
         let {
           on: __passedPropsOn,
@@ -307,46 +307,56 @@ export default function applyReactInVue(component, options = {}) {
           ...__passedPropsRest
         } = (this.$props.dataPassedProps != null ? this.$props.dataPassedProps : {})
 
-        // 处理具名插槽，将作为属性被传递
-        const normalSlots = {}
-        const mergeSlots = { ...__passedPropsSlots, ...this.$slots }
-        // 对插槽类型的属性做标记
-        for (const i in mergeSlots) {
-          normalSlots[i] = mergeSlots[i]
-          normalSlots[i].__slot = true
-        }
-        // 对作用域插槽进行处理
-        const scopedSlots = {}
-        const mergeScopedSlots = { ...__passedPropsScopedSlots, ...this.$scopedSlots }
-        for (const i in mergeScopedSlots) {
-          // 过滤普通插槽
-          if (normalSlots[i]) {
-            // 并且做上标记，vue2.6之后，所有插槽都推荐用作用域，所以之后要转成普通插槽
-            if (this.$scopedSlots[i]) {
-              this.$scopedSlots[i].__slot = true
-            }
-            continue
-          }
-          // 如果发现作用域插槽中有普通插槽的标记，就转成成普通插槽
-          if (mergeScopedSlots[i].__slot) {
-            normalSlots[i] = mergeScopedSlots[i]()
+        let normalSlots = {}
+        let scopedSlots = {}
+        if (!update || update && isChildrenUpdate) {
+          // 处理具名插槽，将作为属性被传递
+
+          const mergeSlots = { ...__passedPropsSlots, ...this.$slots }
+          // 对插槽类型的属性做标记
+          for (const i in mergeSlots) {
+            normalSlots[i] = mergeSlots[i]
             normalSlots[i].__slot = true
-            continue
           }
-          scopedSlots[i] = this.getScopeSlot(mergeScopedSlots[i])
+          // 对作用域插槽进行处理
+          const mergeScopedSlots = { ...__passedPropsScopedSlots, ...this.$scopedSlots }
+          for (const i in mergeScopedSlots) {
+            // 过滤普通插槽
+            if (normalSlots[i]) {
+              // 并且做上标记，vue2.6之后，所有插槽都推荐用作用域，所以之后要转成普通插槽
+              if (this.$scopedSlots[i]) {
+                this.$scopedSlots[i].__slot = true
+              }
+              continue
+            }
+            // 如果发现作用域插槽中有普通插槽的标记，就转成成普通插槽
+            if (mergeScopedSlots[i].__slot) {
+              normalSlots[i] = mergeScopedSlots[i]()
+              normalSlots[i].__slot = true
+              continue
+            }
+            scopedSlots[i] = this.getScopeSlot(mergeScopedSlots[i])
+          }
         }
+
         // 预生成react组件的透传属性
         const __passedProps = {
           ...__passedPropsRest,
           ...{ ...this.$attrs },
-          $slots: normalSlots,
-          $scopedSlots: scopedSlots,
-          children,
+          ...(!update || update && isChildrenUpdate ? {
+            $slots: normalSlots,
+            $scopedSlots: scopedSlots,
+            children
+          }: {}),
           on: { ...__passedPropsOn, ...this.$listeners },
         }
-        const lastNormalSlots = { ...normalSlots }
-        children = lastNormalSlots.default
-        delete lastNormalSlots.default
+        let lastNormalSlots
+        if (!update || update && isChildrenUpdate) {
+          lastNormalSlots = { ...normalSlots }
+          children = lastNormalSlots.default
+          delete lastNormalSlots.default
+        }
+
         // 获取style scoped生成的hash
         const hashMap = {}
         for (let i in this.$el.dataset) {
@@ -381,10 +391,12 @@ export default function applyReactInVue(component, options = {}) {
             reactRootComponent = <ReduxContext.Provider value={{ store: this.$redux.store }}>{reactRootComponent}</ReduxContext.Provider>
           }
           // 必须异步，等待包囊层的react实例完毕
-          this.$nextTick(() => {
-            const container = this.$refs.react
+          // this.$nextTick(() => {
+          const container = this.$refs.react
+          let reactWrapperRef = options.wrapInstance
+
+          if (!reactWrapperRef) {
             let parentInstance = this.$parent
-            let reactWrapperRef
             // 向上查找react包囊层
             while (parentInstance) {
               if (parentInstance.parentReactWrapperRef) {
@@ -397,32 +409,38 @@ export default function applyReactInVue(component, options = {}) {
               }
               parentInstance = parentInstance.$parent
             }
-            // 如果存在包囊层，则激活portal
-            if (reactWrapperRef) {
-              // 存储包囊层引用
-              this.parentReactWrapperRef = reactWrapperRef
-              // 存储portal引用
-              this.reactPortal = () => ReactDOM.createPortal(
-                  reactRootComponent,
-                  container
-              )
-              reactWrapperRef.pushReactPortal(this.reactPortal)
-              return
-            }
-            ReactDOM.render(
+          } else {
+            reactWrapperRef = options.wrapInstance
+            reactWrapperRef.vueWrapperRef = this
+          }
+
+          // 如果存在包囊层，则激活portal
+          if (reactWrapperRef) {
+            // 存储包囊层引用
+            this.parentReactWrapperRef = reactWrapperRef
+            // 存储portal引用
+            this.reactPortal = () => ReactDOM.createPortal(
                 reactRootComponent,
                 container
             )
-          })
+            reactWrapperRef.pushReactPortal(this.reactPortal)
+            return
+          }
+
+          const reactInstance = ReactDOM.render(
+              reactRootComponent,
+              container
+          )
+          // })
         } else {
           // 更新
           // Promise异步合并更新
-          if (!this.cache) {
-            this.$nextTick(() => {
-              this.reactInstance && this.reactInstance.setState(this.cache)
-              this.cache = null
-            })
-          }
+          // if (!this.cache) {
+          //   this.$nextTick(() => {
+          //     this.reactInstance && this.reactInstance.setState(this.cache)
+          //     this.cache = null
+          //   })
+          // }
           const reactEvent = {}
           Object.keys(this.$listeners).forEach((key) => {
             reactEvent['on' + key.replace(/^(\w)/, ($, $1) => $1.toUpperCase())] = this.$listeners[key]
@@ -432,14 +450,17 @@ export default function applyReactInVue(component, options = {}) {
             ...this.$attrs,
             // ...this.$listeners,
             ...reactEvent,
-            ...{ children },
-            ...lastNormalSlots,
-            ...scopedSlots,
+            ...(update && isChildrenUpdate ? {
+              children,
+              ...lastNormalSlots,
+              ...scopedSlots,
+            }: {}),
             ...{ "data-passed-props": __passedProps },
             ...(this.lastVnodeData.class ? {className: this.lastVnodeData.class}: {}),
             ...{...hashMap},
             style: this.lastVnodeData.style,
           }}
+          this.reactInstance && this.reactInstance.setState(this.cache)
         }
       },
     },
@@ -461,7 +482,7 @@ export default function applyReactInVue(component, options = {}) {
       ReactDOM.unmountComponentAtNode(this.$refs.react)
     },
     updated() {
-      this.mountReactComponent(true)
+      this.mountReactComponent(true, true)
     },
     inheritAttrs: false,
     watch: {
