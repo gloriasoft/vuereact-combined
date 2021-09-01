@@ -152,7 +152,7 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
     let finalProps = props
     // 自定义处理参数
     if (options.defaultPropsFormatter) {
-      finalProps = options.defaultPropsFormatter(props, this.vueInReactCall)
+      finalProps = options.defaultPropsFormatter(props, this.vueInReactCall, hashList)
     }
     const newProps = { ...finalProps, ...{ "data-passed-props": __passedProps } }
     if ((Object.getPrototypeOf(Component) !== Function.prototype && !(typeof Component === "object" && !Component.render)) || applyReact.catchVueRefs()) {
