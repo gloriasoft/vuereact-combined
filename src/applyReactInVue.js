@@ -92,6 +92,7 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
     let {
       children,
       "data-passed-props": __passedProps,
+      hashList,
       ...props
     } = this.state
     // 保留一份作用域和具名插槽，用于之后再透传给vue组件
@@ -123,7 +124,7 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
         const vueSlot = children
         // 自定义插槽处理
         if (options.defaultSlotsFormatter){
-          children = options.defaultSlotsFormatter(children, this.vueInReactCall)
+          children = options.defaultSlotsFormatter(children, this.vueInReactCall, hashList)
           if (children instanceof Array) {
             children = [...children]
           } else {
@@ -359,9 +360,11 @@ export default function applyReactInVue(component, options = {}) {
 
         // 获取style scoped生成的hash
         const hashMap = {}
+        const hashList = []
         for (let i in this.$el.dataset) {
           if (this.$el.dataset.hasOwnProperty(i) && i.match(/v-[\da-zA-Z]+/)) {
             hashMap['data-' + i] = ''
+            hashList.push('data-' + i)
           }
         }
         // 如果不传入组件，就作为更新
@@ -382,6 +385,7 @@ export default function applyReactInVue(component, options = {}) {
               {...{ "data-passed-props": __passedProps }}
               {...(this.lastVnodeData.class ? {className: this.lastVnodeData.class}: {})}
               {...hashMap}
+              hashList={hashList}
               style={this.lastVnodeData.style}
               ref={(ref) => (this.reactInstance = ref)}
           />
