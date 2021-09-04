@@ -125,9 +125,9 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
         // 自定义插槽处理
         if (options.defaultSlotsFormatter){
           children = options.defaultSlotsFormatter(children, this.vueInReactCall, hashList)
-          if (children instanceof Array) {
+          if (children instanceof Array || (typeof children).indexOf('string', 'number') > -1) {
             children = [...children]
-          } else {
+          } else if (typeof children === 'object'){
             children = {...children}
           }
         } else {
