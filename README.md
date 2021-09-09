@@ -26,7 +26,7 @@ npm i vuereact-combined -S
 非常感谢vuera的存在，开辟了Vue和React融合的想法，但是vuera只能解决非常基础的组件融合，并且存在插槽(children)和数据变更后的渲染性能问题，因此无法用于复杂的场景以及生产环境  
 vuereact-combined将融合做到了极致，支持了大部分的Vue和React组件的功能，并且在渲染更新上使用了和vuera不同的思路，完美解决了渲染性能问题  
 场景/功能 | vuereact-combined | vuera  
--|-|-  
+--|--|--|  
 normal prop (vue / react) | ✔ | ✔ |  
 event (vue / react) | ✔ | ✔ |  
 children (vue / react) | ✔ | ✔ |  
