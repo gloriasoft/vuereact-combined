@@ -455,7 +455,7 @@ export default function applyReactInVue(component, options = {}) {
             // ...this.$listeners,
             ...reactEvent,
             ...(update && isChildrenUpdate ? {
-              children,
+              ...(children ? {children}: {}),
               ...lastNormalSlots,
               ...scopedSlots,
             }: {}),
