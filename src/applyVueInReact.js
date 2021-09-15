@@ -422,14 +422,15 @@ class VueComponentLoader extends React.Component {
         // 手动把props丛attrs中去除，
         // 这一步有点繁琐，但是又必须得处理
         const attrs = filterAttrs({ ...lastProps })
+        const {className: newClassName, ...lastAttrs} = attrs
         return createElement(
             'use_vue_wrapper',
             {
               props: lastProps,
               on: lastOn,
               nativeOn,
-              attrs,
-              'class': className,
+              attrs: lastAttrs,
+              'class': className || newClassName || '',
               style,
               scopedSlots: { ...scopedSlots }
             },
