@@ -22,7 +22,7 @@ const originOptions = {
     componentWrapHOC: (VueComponentMountAt, nativeProps = []) => {
       // 传入portals
       return function ({ portals = [] } = {}) {
-        return (<div {...nativeProps}>{VueComponentMountAt}{portals.map((Portal, index) => <Portal key={index}/>)}</div>)
+        return (<div {...nativeProps}>{VueComponentMountAt}{portals.map(({ Portal, key }) => <Portal key={key}/>)}</div>)
       }
     },
     componentWrapAttrs: {

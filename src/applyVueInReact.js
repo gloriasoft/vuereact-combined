@@ -76,7 +76,8 @@ class VueComponentLoader extends React.Component {
   constructor (props) {
     super(props)
     this.state = {
-      portals: []
+      portals: [],
+      portalKeyPool: []
     }
     // 捕获vue组件
     this.currentVueComponent = filterVueComponent(props.component)
@@ -85,9 +86,27 @@ class VueComponentLoader extends React.Component {
   }
 
   pushReactPortal (reactPortal) {
-    const { portals } = this.state
-    portals.push(reactPortal)
+    const { portals, portalKeyPool } = this.state
+    const key = portalKeyPool.shift() || portals.length
+    portals.push({
+      Portal: reactPortal,
+      key
+    })
     this.setState({ portals })
+  }
+
+  removeReactPortal (reactPortal) {
+    const { portals, portalKeyPool } = this.state
+    let index
+    const portalData = portals.find((obj, i) => {
+      if (obj.Portal === reactPortal) {
+        index = i
+        return true
+      }
+    })
+    portalKeyPool.push(portalData.key)
+    portals.splice(index, 1)
+    this.vueRef && this.setState({ portals })
   }
 
   // 这一步变的复杂是要判断插槽和组件的区别，如果是插槽则对wrapper传入原生事件和插槽相关的属性，如果是组件对wrapper不传入原生事件
@@ -132,9 +151,7 @@ class VueComponentLoader extends React.Component {
   componentWillUnmount () {
     // 删除portal
     if (this.vuePortal) {
-      const { portals } = this.parentVueWrapperRef
-      const index = portals.indexOf(this.vuePortal)
-      portals.splice(index, 1)
+      this.parentVueWrapperRef.removeVuePortal(this.vuePortal)
       return
     }
     this.vueInstance && this.vueInstance.$destroy()

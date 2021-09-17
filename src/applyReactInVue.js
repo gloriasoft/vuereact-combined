@@ -180,7 +180,8 @@ export default function applyReactInVue(component, options = {}) {
     originReactComponent: component,
     data() {
       return {
-        portals: []
+        portals: [],
+        portalKeyPool: []
       }
     },
     created() {
@@ -197,11 +198,26 @@ export default function applyReactInVue(component, options = {}) {
     render(createElement) {
       this.slotsInit()
       const { style, ...attrs } = options.react.componentWrapAttrs
-      return createElement(options.react.componentWrap, { ref: "react", attrs, style }, this.portals.map((Portal, index) => Portal(createElement, index)))
+      return createElement(options.react.componentWrap, { ref: "react", attrs, style }, this.portals.map(({ Portal, key }) => Portal(createElement, key)))
     },
     methods: {
       pushVuePortal(vuePortal) {
-        this.portals.push(vuePortal)
+        const key = this.portalKeyPool.shift() || this.portals.length
+        this.portals.push({
+          Portal: vuePortal,
+          key
+        })
+      },
+      removeVuePortal(vuePortal) {
+        let index
+        const portalData = this.portals.find((obj, i) => {
+          if (obj.Portal === vuePortal) {
+            index = i
+            return true
+          }
+        })
+        this.portalKeyPool.push(portalData.key)
+        this.portals.splice(index, 1)
       },
       // hack!!!! 一定要在render函数李触发，才能激活具名插槽
       slotsInit() {
@@ -476,10 +492,7 @@ export default function applyReactInVue(component, options = {}) {
       clearTimeout(this.updateTimer)
       // 删除portal
       if (this.reactPortal) {
-        const { portals } = this.parentReactWrapperRef.state
-        const index = portals.indexOf(this.reactPortal)
-        portals.splice(index, 1)
-        this.parentReactWrapperRef.vueRef && this.parentReactWrapperRef.setState({ portals })
+        this.parentReactWrapperRef.removeReactPortal(this.reactPortal)
         return
       }
       // 删除根节点
