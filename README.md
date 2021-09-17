@@ -312,7 +312,8 @@ export default {
 }
 </script>
 ```  
-## 在React组件中使用Vue的动态组件
+## 在React组件中使用Vue的动态组件  
+VueContainer是一个高阶组件，通过component属性直接渲染Vue组件  
 ```jsx
 // React JSX File
 import React, { useState, useEffect } from 'react'
@@ -362,9 +363,7 @@ export default function() {
     // 以下的代码等于同于vue中v-on="{click, mouseEnter, customEvent}"
     return <VueComponentInReact on={{click, mouseEnter, customEvent}}/>
 }
-```
-
-VueContainer是一个高阶组件，通过component属性直接渲染Vue组件  
+```  
 ## applyRedux
 作用：使得所有的Vue组件可以使用redux的状态管理
 对工具包开启redux状态管理，这个场景一般存在于以React为主的项目中，为了使Vue组件也可以共享到redux，需要在项目的入口文件引入applyRedux方法（整个项目应该只引一次），将redux的store以及redux的context作为参数传入（或者至少在redux的Provider高阶组件引入的地方使用applyRedux方法）
