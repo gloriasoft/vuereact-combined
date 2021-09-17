@@ -339,7 +339,7 @@ export default function() {
 ```  
 
 ## 在React组件中使用Vue组件的事件  
-这里没有使用onEvent的属性传递方法，因为无法排除vue组件有属性与此种用法重名的可能  
+注意：这里没有使用onEvent的属性传递方法，因为无法排除vue组件有属性与此种用法重名的可能  
 ```jsx
 // React JSX File
 import React, { useState } from 'react'
