@@ -336,6 +336,34 @@ export default function() {
   return <VueContainer component={vueComponent} prop1={prop1} prop2={prop2}/>
 }
 ```  
+
+## 在React组件中使用Vue组件的事件  
+这里没有使用onEvent的属性传递方法，因为无法排除vue组件有属性与此种用法重名的可能  
+```jsx
+// React JSX File
+import React, { useState } from 'react'
+// 一个开放了某些事件的Vue组件
+import VueComponent from './VueComponent.vue'
+import { applyVueInReact } from 'vuereact-combined'
+
+const VueComponentInReact = applyVueInReact(VueComponent)
+
+export default function() {
+    const click = () => {
+        console.log('click')
+    }
+    const mouseEnter = () => {
+        console.log('mouseEnter')
+    }
+    const customEvent = () => {
+        console.log('mouseEnter')
+    }
+    // 通过on属性传递将事件所对应的函数传递给vue组件
+    // 以下的代码等于同于vue中v-on="{click, mouseEnter, customEvent}"
+    return <VueComponentInReact on={{click, mouseEnter, customEvent}}/>
+}
+```
+
 VueContainer是一个高阶组件，通过component属性直接渲染Vue组件  
 ## applyRedux
 作用：使得所有的Vue组件可以使用redux的状态管理
