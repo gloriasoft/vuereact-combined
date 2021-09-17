@@ -77,7 +77,8 @@ class VueComponentLoader extends React.Component {
     super(props)
     this.state = {
       portals: [],
-      portalKeyPool: []
+      portalKeyPool: [],
+      maxPortalCount: 0
     }
     // 捕获vue组件
     this.currentVueComponent = filterVueComponent(props.component)
@@ -86,13 +87,13 @@ class VueComponentLoader extends React.Component {
   }
 
   pushReactPortal (reactPortal) {
-    const { portals, portalKeyPool } = this.state
-    const key = portalKeyPool.shift() || portals.length
+    let { portals, portalKeyPool, maxPortalCount } = this.state
+    const key = portalKeyPool.shift() || maxPortalCount++
     portals.push({
       Portal: reactPortal,
       key
     })
-    this.setState({ portals })
+    this.setState({ portals, maxPortalCount })
   }
 
   removeReactPortal (reactPortal) {

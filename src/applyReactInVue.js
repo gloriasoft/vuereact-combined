@@ -181,7 +181,8 @@ export default function applyReactInVue(component, options = {}) {
     data() {
       return {
         portals: [],
-        portalKeyPool: []
+        portalKeyPool: [],
+        maxPortalCount: 0
       }
     },
     created() {
@@ -198,11 +199,12 @@ export default function applyReactInVue(component, options = {}) {
     render(createElement) {
       this.slotsInit()
       const { style, ...attrs } = options.react.componentWrapAttrs
+      // return createElement(options.react.componentWrap, { ref: "react", attrs, style }, this.portals.map((Portal, index) => Portal(createElement, index)))
       return createElement(options.react.componentWrap, { ref: "react", attrs, style }, this.portals.map(({ Portal, key }) => Portal(createElement, key)))
     },
     methods: {
       pushVuePortal(vuePortal) {
-        const key = this.portalKeyPool.shift() || this.portals.length
+        const key = this.portalKeyPool.shift() || this.maxPortalCount++
         this.portals.push({
           Portal: vuePortal,
           key
