@@ -77,9 +77,9 @@ class VueComponentLoader extends React.Component {
     super(props)
     this.state = {
       portals: [],
-      portalKeyPool: [],
-      maxPortalCount: 0
     }
+    this.portalKeyPool = []
+    this.maxPortalCount = 0
     // 捕获vue组件
     this.currentVueComponent = filterVueComponent(props.component)
     this.createVueInstance = this.createVueInstance.bind(this)
@@ -87,17 +87,17 @@ class VueComponentLoader extends React.Component {
   }
 
   pushReactPortal (reactPortal) {
-    let { portals, portalKeyPool, maxPortalCount } = this.state
-    const key = portalKeyPool.shift() || maxPortalCount++
+    let { portals } = this.state
+    const key = this.portalKeyPool.shift() || this.maxPortalCount++
     portals.push({
       Portal: reactPortal,
       key
     })
-    this.setState({ portals, maxPortalCount })
+    this.setState({ portals })
   }
 
   removeReactPortal (reactPortal) {
-    const { portals, portalKeyPool } = this.state
+    const { portals } = this.state
     let index
     const portalData = portals.find((obj, i) => {
       if (obj.Portal === reactPortal) {
@@ -105,7 +105,7 @@ class VueComponentLoader extends React.Component {
         return true
       }
     })
-    portalKeyPool.push(portalData.key)
+    this.portalKeyPool.push(portalData.key)
     portals.splice(index, 1)
     this.vueRef && this.setState({ portals })
   }
@@ -202,10 +202,37 @@ class VueComponentLoader extends React.Component {
     }
     return { ...newProps, ...syncValues }
   }
+  transferSlots ($slots) {
+    // 将$slots中的内容处理成函数，防止被vue的data进行observer处理
+    if ($slots) {
+      Object.keys($slots).forEach((key) => {
+        const originSlot = $slots[key]
+        $slots[key] = () => originSlot
+      })
+      return $slots
+    }
+  }
+  transferChildren (children) {
+    // 将children中的内容处理成函数，防止被vue的data进行observer处理
+    if (children) {
+      const originChildren = children
+      children = () => originChildren
+      return children
+    }
+  }
   // 将通过react组件的ref回调方式接收组件的dom对象，并且在class的constructor中已经绑定了上下文
   createVueInstance (targetElement) {
     const VueContainerInstance = this
-    let { component, 'data-passed-props': __passedProps = {}, [optionsName]: options, ...props } = this.props
+    let { component, 'data-passed-props': __passedProps = {}, [optionsName]: options, children, $slots, ...props } = this.props
+    children = this.transferChildren(children)
+    $slots = this.transferSlots($slots)
+    if (children) {
+      props.children = children
+    }
+    if ($slots) {
+      props.$slots = $slots
+    }
+
     component = filterVueComponent(component)
     // 过滤vue组件实例化后的$attrs
     let filterAttrs = (props) => {
@@ -269,6 +296,7 @@ class VueComponentLoader extends React.Component {
     const vueOptions = {
       ...vueRootInfo,
       data() {
+        console.log(2222, props)
         return vueOptionsData
       },
       created() {
@@ -285,6 +313,7 @@ class VueComponentLoader extends React.Component {
           let tempSlots = Object.assign({}, $slots)
           for (let i in tempSlots) {
             if (!tempSlots.hasOwnProperty(i) || !tempSlots[i]) continue
+            if (typeof tempSlots[i] === 'function') tempSlots[i] = tempSlots[i]()
             tempSlots[i] = ((slot, slotName) => {
               if (slot.vueSlot) {
                 return slot.vueSlot
@@ -348,6 +377,7 @@ class VueComponentLoader extends React.Component {
         getChildren (createElement, children) {
           // 这里要做判断，否则没有普通插槽传入，vue组件又设置了slot，会报错
           if (children != null) {
+            if (typeof children === 'function') children = children()
             if (children.vueSlot) {
               return children.vueSlot
             }
