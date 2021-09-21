@@ -296,7 +296,6 @@ class VueComponentLoader extends React.Component {
     const vueOptions = {
       ...vueRootInfo,
       data() {
-        console.log(2222, props)
         return vueOptionsData
       },
       created() {
