@@ -522,7 +522,7 @@ class VueComponentLoader extends React.Component {
       this.parentVueWrapperRef = vueWrapperRef
 
       // 存储portal引用
-      this.vuePortal = (createElement, key) => createElement(MountingPortal, {props: {mountTo: '#' + targetId, slim:true, targetSlim: true}, key: targetId}, [createElement(vueOptions)])
+      this.vuePortal = (createElement, key) => createElement(MountingPortal, {props: {mountTo: '#' + targetId, slim:true, targetSlim: true}, key: targetId}, [createElement({...vueOptions, router: this._router})])
       vueWrapperRef.pushVuePortal(this.vuePortal)
       return
     }
