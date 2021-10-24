@@ -312,7 +312,7 @@ export default {
 }
 </script>
 ```  
-## 在React组件中使用Vue的动态组件  
+## VueContainer，在React组件中使用Vue的动态组件  
 VueContainer是一个高阶组件，通过component属性直接渲染Vue组件  
 ```jsx
 // React JSX File
@@ -334,7 +334,11 @@ export default function() {
   }, [])
   const prop1 = '属性1'
   const prop2 = '属性2'
-  return <VueContainer component={vueComponent} prop1={prop1} prop2={prop2}/>
+  return <div>
+      <VueContainer component={vueComponent} prop1={prop1} prop2={prop2}/>
+      {/* component属性为string类型时，表示使用vue的全局组件，以下的例子表示在react组件中使用vue-router的<router-view/> */}
+      <VueContainer component="RouterView"/>
+  </div>
 }
 ```  
 
