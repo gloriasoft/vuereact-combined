@@ -124,6 +124,7 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
         const vueSlot = children
         // 自定义插槽处理
         if (options.defaultSlotsFormatter){
+          children.__top__ = this.vueWrapperRef
           children = options.defaultSlotsFormatter(children, this.vueInReactCall, hashList)
           if (children instanceof Array || (typeof children).indexOf('string', 'number') > -1) {
             children = [...children]
@@ -316,7 +317,10 @@ export default function applyReactInVue(component, options = {}) {
         scopedSlotFunction.__scopedSlot = true
         return scopedSlotFunction
       },
-      mountReactComponent(update, isChildrenUpdate) {
+      __syncUpdateProps(extraData) {
+        this.mountReactComponent(true, false, extraData)
+      },
+      mountReactComponent(update, isChildrenUpdate, extraData = {}) {
         // 先提取透传属性
         let {
           on: __passedPropsOn,
@@ -477,6 +481,7 @@ export default function applyReactInVue(component, options = {}) {
               ...lastNormalSlots,
               ...scopedSlots,
             }: {}),
+            ...extraData,
             ...{ "data-passed-props": __passedProps },
             ...(this.lastVnodeData.class ? {className: this.lastVnodeData.class}: {}),
             ...{...hashMap},
