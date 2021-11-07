@@ -106,7 +106,18 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
           const vueSlot = props[i]
           // 执行applyVueInReact方法将直接获得react组件对象，无需使用jsx
           // props[i] = { ...applyVueInReact(this.createSlot(props[i]))() }
-          props[i] = { ...applyVueInReact(this.createSlot(props[i]), { ...options, isSlots: true, wrapInstance }).render() }
+          // 自定义插槽处理
+          if (options.defaultSlotsFormatter){
+            props[i].__top__ = this.vueWrapperRef
+            props[i] = options.defaultSlotsFormatter(props[i], this.vueInReactCall, hashList)
+            if (props[i] instanceof Array || (typeof props[i]).indexOf('string', 'number') > -1) {
+              props[i] = [...props[i]]
+            } else if (typeof props[i] === 'object'){
+              props[i] = {...props[i]}
+            }
+          } else {
+            props[i] = { ...applyVueInReact(this.createSlot(props[i]), { ...options, isSlots: true, wrapInstance }).render() }
+          }
           props[i].vueSlot = vueSlot
         } else {
           props[i] = props[i].reactSlot
@@ -302,12 +313,23 @@ export default function applyReactInVue(component, options = {}) {
         return []
       },
       // 用多阶函数解决作用域插槽的传递问题
-      getScopeSlot(slotFunction) {
+      getScopeSlot(slotFunction, hashList) {
         const _this = this
         function scopedSlotFunction(createReactSlot) {
           function getSlot(...args) {
             if (slotFunction.reactFunction) {
               return slotFunction.reactFunction.apply(this, args)
+            }
+            if (options.defaultSlotsFormatter){
+              let scopeSlot = slotFunction.apply(this, args)
+              scopeSlot.__top__ = _this.vueWrapperRef
+              scopeSlot = options.defaultSlotsFormatter(scopeSlot, _this.vueInReactCall, hashList)
+              if (scopeSlot instanceof Array || (typeof scopeSlot).indexOf('string', 'number') > -1) {
+                scopeSlot = [...scopeSlot]
+              } else if (typeof scopeSlot === 'object'){
+                scopeSlot = {...scopeSlot}
+              }
+              return scopeSlot
             }
             return applyVueInReact(createReactSlot(slotFunction.apply(this, args)), { ...options, isSlots: true, wrapInstance: _this }).render()
           }
@@ -329,6 +351,18 @@ export default function applyReactInVue(component, options = {}) {
           children,
           ...__passedPropsRest
         } = (this.$props.dataPassedProps != null ? this.$props.dataPassedProps : {})
+
+        // 获取style scoped生成的hash
+        const hashMap = {}
+        const hashList = []
+        for (let i in this.$el.dataset) {
+          if (this.$el.dataset.hasOwnProperty(i) && (i.match(/v-[\da-z]+/) || i.match(/v[A-Z][\da-zA-Z]+/))) {
+            // 尝试驼峰转中划线
+            i = i.replace(/([A-Z])/g, '-$1').toLowerCase()
+            hashMap['data-' + i] = ''
+            hashList.push('data-' + i)
+          }
+        }
 
         let normalSlots = {}
         let scopedSlots = {}
@@ -358,7 +392,7 @@ export default function applyReactInVue(component, options = {}) {
               normalSlots[i].__slot = true
               continue
             }
-            scopedSlots[i] = this.getScopeSlot(mergeScopedSlots[i])
+            scopedSlots[i] = this.getScopeSlot(mergeScopedSlots[i], hashList)
           }
         }
 
@@ -380,15 +414,6 @@ export default function applyReactInVue(component, options = {}) {
           delete lastNormalSlots.default
         }
 
-        // 获取style scoped生成的hash
-        const hashMap = {}
-        const hashList = []
-        for (let i in this.$el.dataset) {
-          if (this.$el.dataset.hasOwnProperty(i) && i.match(/v-[\da-zA-Z]+/)) {
-            hashMap['data-' + i] = ''
-            hashList.push('data-' + i)
-          }
-        }
         // 如果不传入组件，就作为更新
         if (!update) {
           const Component = createReactContainer(component, options, this)
