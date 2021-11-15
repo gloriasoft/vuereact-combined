@@ -340,7 +340,8 @@ export default function applyReactInVue(component, options = {}) {
         return scopedSlotFunction
       },
       __syncUpdateProps(extraData) {
-        this.mountReactComponent(true, false, extraData)
+        // this.mountReactComponent(true, false, extraData)
+        this.reactInstance && this.reactInstance.setState(extraData)
       },
       mountReactComponent(update, isChildrenUpdate, extraData = {}) {
         // 先提取透传属性
@@ -485,13 +486,28 @@ export default function applyReactInVue(component, options = {}) {
           // })
         } else {
           // 更新
-          // Promise异步合并更新
-          // if (!this.cache) {
-          //   this.$nextTick(() => {
-          //     this.reactInstance && this.reactInstance.setState(this.cache)
-          //     this.cache = null
-          //   })
-          // }
+          if (this.microTaskUpdate) {
+            // Promise异步合并更新
+            if (!this.cache) {
+              this.$nextTick(() => {
+                this.reactInstance && this.reactInstance.setState(this.cache)
+                this.cache = null
+                this.microTaskUpdate = false
+              })
+            }
+          }
+
+          // 宏任务合并更新
+          if (this.macroTaskUpdate) {
+            clearTimeout(this.updateTimer)
+            this.updateTimer = setTimeout(() => {
+              clearTimeout(this.updateTimer)
+              this.reactInstance && this.reactInstance.setState(this.cache)
+              this.cache = null
+              this.macroTaskUpdate = false
+            })
+          }
+
           const reactEvent = {}
           Object.keys(this.$listeners).forEach((key) => {
             reactEvent['on' + key.replace(/^(\w)/, ($, $1) => $1.toUpperCase())] = this.$listeners[key]
@@ -512,7 +528,12 @@ export default function applyReactInVue(component, options = {}) {
             ...{...hashMap},
             style: this.lastVnodeData.style,
           }}
-          this.reactInstance && this.reactInstance.setState(this.cache)
+
+          // 同步更新
+          if (!this.macroTaskUpdate && !this.microTaskUpdate) {
+            this.reactInstance && this.reactInstance.setState(this.cache)
+            this.cache = null
+          }
         }
       },
     },
@@ -531,13 +552,18 @@ export default function applyReactInVue(component, options = {}) {
       ReactDOM.unmountComponentAtNode(this.$refs.react)
     },
     updated() {
+      if (this.attrsUpdated) return
       this.mountReactComponent(true, true)
     },
     inheritAttrs: false,
     watch: {
       $attrs: {
         handler() {
-          this.mountReactComponent(true)
+          this.mountReactComponent(true, true)
+          this.attrsUpdated = true
+          Promise.resolve().then(() => {
+            this.attrsUpdated = false
+          })
         },
         deep: true,
       },
