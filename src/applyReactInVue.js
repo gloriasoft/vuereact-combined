@@ -234,9 +234,28 @@ export default function applyReactInVue(component, options = {}) {
         this.portals.splice(index, 1)
       },
       // hack!!!! 一定要在render函数李触发，才能激活具名插槽
-      slotsInit() {
+      slotsInit(vnode) {
+        // 针对pureTransformer类型的react组件进行兼容，解决具名插槽和作用域插槽不更新的问题
+        if (vnode) {
+          if (vnode.componentOptions?.Ctor?.options && !vnode.componentOptions?.Ctor?.options.originReactComponent) return
+          if (vnode.data?.scopedSlots) {
+            Object.keys(vnode.data?.scopedSlots).forEach((key) => {
+              if (typeof vnode.data.scopedSlots[key] === 'function') {
+                vnode.data.scopedSlots[key]()
+              }
+            })
+          }
+          if (vnode.children) {
+            vnode.children.forEach((subVnode) => {
+              this.slotsInit(subVnode)
+            })
+          }
+          return
+        }
         Object.keys(this.$slots).forEach((key) => {
-          return this.$slots[key]
+          (this.$slots[key] || []).forEach((subVnode) => {
+            this.slotsInit(subVnode)
+          })
         })
         Object.keys(this.$scopedSlots).forEach((key) => {
           this.$scopedSlots[key]()
