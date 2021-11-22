@@ -571,18 +571,18 @@ export default function applyReactInVue(component, options = {}) {
       ReactDOM.unmountComponentAtNode(this.$refs.react)
     },
     updated() {
-      if (this.attrsUpdated) return
+      // if (this.attrsUpdated) return
       this.mountReactComponent(true, true)
     },
     inheritAttrs: false,
     watch: {
       $attrs: {
         handler() {
-          this.mountReactComponent(true, true)
-          this.attrsUpdated = true
-          Promise.resolve().then(() => {
-            this.attrsUpdated = false
-          })
+          this.mountReactComponent(true)
+          // this.attrsUpdated = true
+          // Promise.resolve().then(() => {
+          //   this.attrsUpdated = false
+          // })
         },
         deep: true,
       },
