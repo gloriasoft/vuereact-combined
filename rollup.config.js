@@ -19,9 +19,10 @@ const shared = {
     commonjs(),
     uglify({
       compress: {
-          pure_getters: true,
-          unsafe: true,
-          unsafe_comps: true
+          // 这个设置会导致压缩时一些不该被删的代码被误删
+          // pure_getters: true,
+          // unsafe: true,
+          // unsafe_comps: true
       }
     })
   ],
