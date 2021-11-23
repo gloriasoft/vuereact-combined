@@ -241,7 +241,9 @@ export default function applyReactInVue(component, options = {}) {
           if (vnode.data?.scopedSlots) {
             Object.keys(vnode.data?.scopedSlots).forEach((key) => {
               if (typeof vnode.data.scopedSlots[key] === 'function') {
-                vnode.data.scopedSlots[key]()
+                try{
+                  vnode.data.scopedSlots[key]()
+                }catch(e){}
               }
             })
           }
@@ -258,7 +260,9 @@ export default function applyReactInVue(component, options = {}) {
           })
         })
         Object.keys(this.$scopedSlots).forEach((key) => {
-          this.$scopedSlots[key]()
+          try{
+            this.$scopedSlots[key]()
+          }catch(e){}
         })
       },
       updateLastVnodeData(vnode) {
