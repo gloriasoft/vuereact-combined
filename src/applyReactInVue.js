@@ -247,11 +247,10 @@ export default function applyReactInVue(component, options = {}) {
               }
             })
           }
-          if (vnode.children) {
-            vnode.children.forEach((subVnode) => {
-              this.slotsInit(subVnode)
-            })
-          }
+          const children = vnode.children || vnode.componentOptions?.children || []
+          children.forEach((subVnode) => {
+            this.slotsInit(subVnode)
+          })
           return
         }
         Object.keys(this.$slots).forEach((key) => {
@@ -536,21 +535,21 @@ export default function applyReactInVue(component, options = {}) {
             reactEvent['on' + key.replace(/^(\w)/, ($, $1) => $1.toUpperCase())] = this.$listeners[key]
           })
           this.cache = {...this.cache || {}, ...{
-            ...__passedPropsRest,
-            ...this.$attrs,
-            // ...this.$listeners,
-            ...reactEvent,
-            ...(update && isChildrenUpdate ? {
-              ...(children ? {children}: {}),
-              ...lastNormalSlots,
-              ...scopedSlots,
-            }: {}),
-            ...extraData,
-            ...{ "data-passed-props": __passedProps },
-            ...(this.lastVnodeData.class ? {className: this.lastVnodeData.class}: {}),
-            ...{...hashMap},
-            style: this.lastVnodeData.style,
-          }}
+              ...__passedPropsRest,
+              ...this.$attrs,
+              // ...this.$listeners,
+              ...reactEvent,
+              ...(update && isChildrenUpdate ? {
+                ...(children ? {children}: {}),
+                ...lastNormalSlots,
+                ...scopedSlots,
+              }: {}),
+              ...extraData,
+              ...{ "data-passed-props": __passedProps },
+              ...(this.lastVnodeData.class ? {className: this.lastVnodeData.class}: {}),
+              ...{...hashMap},
+              style: this.lastVnodeData.style,
+            }}
 
           // 同步更新
           if (!this.macroTaskUpdate && !this.microTaskUpdate) {
