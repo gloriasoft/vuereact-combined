@@ -28,6 +28,9 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
     // 使用reactRef属性保存目标react组件的实例，可以被父组setRef件的实例获取到
     wrapInstance.reactRef = ref
 
+    // 兼容接收useRef类型的参数
+    this.setRef.current = ref
+
     // 并且将vue的中间件实例保存在react组件的实例中
     // react组件可以通过这个属性来判断是否被包囊使用
     ref.vueWrapperRef = wrapInstance
@@ -155,8 +158,6 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
     // 封装透传属性
     __passedProps = { ...__passedProps, ...{ $slots, $scopedSlots }, children }
     const refInfo = {}
-    // 判断是否要加ref，因为无状态的函数组件没有ref
-    // 通过判断Component的原型是否不是Function原型
     refInfo.ref = this.setRef
     if (options.isSlots) {
       return this.state.children || this.props.children
@@ -167,6 +168,8 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
       finalProps = options.defaultPropsFormatter(props, this.vueInReactCall, hashList)
     }
     const newProps = { ...finalProps, ...{ "data-passed-props": __passedProps } }
+    // 判断是否要通过一个class组件包装一下来获取ref
+    // 通过判断Component的原型是否不是Function原型
     if ((Object.getPrototypeOf(Component) !== Function.prototype && !(typeof Component === "object" && !Component.render)) || applyReact.catchVueRefs()) {
       return (
           <Component {...newProps}
@@ -344,7 +347,7 @@ export default function applyReactInVue(component, options = {}) {
             }
             if (options.defaultSlotsFormatter){
               let scopeSlot = slotFunction.apply(this, args)
-              scopeSlot.__top__ = _this.vueWrapperRef
+              scopeSlot.__top__ = _this
               scopeSlot = options.defaultSlotsFormatter(scopeSlot, _this.vueInReactCall, hashList)
               if (scopeSlot instanceof Array || (typeof scopeSlot).indexOf('string', 'number') > -1) {
                 scopeSlot = [...scopeSlot]
