@@ -27,6 +27,12 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
     if (!ref) return
     // 使用reactRef属性保存目标react组件的实例，可以被父组setRef件的实例获取到
     wrapInstance.reactRef = ref
+    // 将react实例的可枚举属性挂到vue实例中
+    Object.keys(ref).forEach((key) => {
+      if (!wrapInstance[key]) {
+        wrapInstance[key] = ref[key]
+      }
+    })
 
     // 兼容接收useRef类型的参数
     this.setRef.current = ref
