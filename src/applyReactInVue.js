@@ -1,4 +1,4 @@
-import React, {version} from "react"
+import React, { version } from "react"
 import ReactDOM from "react-dom"
 import applyVueInReact, { VueContainer } from "./applyVueInReact"
 import options, { setOptions } from "./options"
@@ -6,6 +6,31 @@ import options, { setOptions } from "./options"
 // vueRootInfo是为了保存vue的root节点options部分信息，现在保存router、store，在applyVueInReact方法中创建vue的中间件实例时会被设置
 // 为了使applyReactInVue -> applyVueInReact之后的vue组件依旧能引用vuex和vue router
 import vueRootInfo from "./vueRootInfo"
+
+const domMethods = ["getElementById", "getElementsByClassName", "getElementsByTagName", "getElementsByTagNameNS", "querySelector", "querySelectorAll"]
+const domTopObject = { Document: {}, Element: {} }
+// 覆盖原生的查找dom对象的方法，为了确保react在销毁前都可以获取dom，而vue的beforeDestroy阶段已经将dom卸载的问题
+function overwriteDomMethods(refDom) {
+  Object.keys(domTopObject).forEach((key) => {
+    domMethods.forEach((method) => {
+      const old = window[key].prototype[method]
+      domTopObject[key][method] = old
+      window[key].prototype[method] = function (...args) {
+        const oldResult = old.apply(this, args)
+        if ((oldResult && oldResult.constructor !== NodeList) || (oldResult.constructor === NodeList && oldResult.length > 0)) return oldResult
+        return Element.prototype[method].apply(refDom, args)
+      }
+    })
+  })
+}
+// 恢复原生方法
+function recoverDomMethods() {
+  Object.keys(domTopObject).forEach((key) => {
+    domMethods.forEach((method) => {
+      window[key].prototype[method] = domTopObject[key][method]
+    })
+  })
+}
 
 class FunctionComponentWrap extends React.Component {
   constructor(props) {
@@ -89,12 +114,14 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
   vueInReactCall(children, customOptions = {}, division) {
     if (division) {
       if (children && children[0]) {
-        return children.map((child, index) => {
-          return applyVueInReact(this.createSlot(child instanceof Function ? child: [child]), { ...options, ...customOptions, isSlots: true, wrapInstance }).render({key: child?.data?.key || index})
-        })
+        return children.map((child, index) => applyVueInReact(this.createSlot(child instanceof Function ? child : [child]), {
+          ...options, ...customOptions, isSlots: true, wrapInstance,
+        }).render({ key: child?.data?.key || index }))
       }
     }
-    return applyVueInReact(this.createSlot(children), { ...options, ...customOptions, isSlots: true, wrapInstance }).render()
+    return applyVueInReact(this.createSlot(children), {
+      ...options, ...customOptions, isSlots: true, wrapInstance,
+    }).render()
   }
 
   render() {
@@ -116,13 +143,13 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
           // 执行applyVueInReact方法将直接获得react组件对象，无需使用jsx
           // props[i] = { ...applyVueInReact(this.createSlot(props[i]))() }
           // 自定义插槽处理
-          if (options.defaultSlotsFormatter){
+          if (options.defaultSlotsFormatter) {
             props[i].__top__ = this.vueWrapperRef
             props[i] = options.defaultSlotsFormatter(props[i], this.vueInReactCall, hashList)
-            if (props[i] instanceof Array || (typeof props[i]).indexOf('string', 'number') > -1) {
+            if (props[i] instanceof Array || (typeof props[i]).indexOf("string", "number") > -1) {
               props[i] = [...props[i]]
-            } else if (typeof props[i] === 'object'){
-              props[i] = {...props[i]}
+            } else if (typeof props[i] === "object") {
+              props[i] = { ...props[i] }
             }
           } else {
             props[i] = { ...applyVueInReact(this.createSlot(props[i]), { ...options, isSlots: true, wrapInstance }).render() }
@@ -143,19 +170,18 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
       if (!children.reactSlot) {
         const vueSlot = children
         // 自定义插槽处理
-        if (options.defaultSlotsFormatter){
+        if (options.defaultSlotsFormatter) {
           children.__top__ = this.vueWrapperRef
           children = options.defaultSlotsFormatter(children, this.vueInReactCall, hashList)
-          if (children instanceof Array || (typeof children).indexOf('string', 'number') > -1) {
+          if (children instanceof Array || (typeof children).indexOf("string", "number") > -1) {
             children = [...children]
-          } else if (typeof children === 'object'){
-            children = {...children}
+          } else if (typeof children === "object") {
+            children = { ...children }
           }
         } else {
           children = { ...applyVueInReact(this.createSlot(children), { ...options, isSlots: true, wrapInstance }).render() }
         }
         children.vueSlot = vueSlot
-
       } else {
         children = children.reactSlot
       }
@@ -203,7 +229,7 @@ export default function applyReactInVue(component, options = {}) {
       return {
         portals: [],
         portalKeyPool: [],
-        maxPortalCount: 0
+        maxPortalCount: 0,
       }
     },
     created() {
@@ -228,7 +254,7 @@ export default function applyReactInVue(component, options = {}) {
         const key = this.portalKeyPool.shift() || this.maxPortalCount++
         this.portals.push({
           Portal: vuePortal,
-          key
+          key,
         })
       },
       removeVuePortal(vuePortal) {
@@ -249,10 +275,10 @@ export default function applyReactInVue(component, options = {}) {
           if (vnode.componentOptions?.Ctor?.options && !vnode.componentOptions?.Ctor?.options.originReactComponent) return
           if (vnode.data?.scopedSlots) {
             Object.keys(vnode.data?.scopedSlots).forEach((key) => {
-              if (typeof vnode.data.scopedSlots[key] === 'function') {
-                try{
+              if (typeof vnode.data.scopedSlots[key] === "function") {
+                try {
                   vnode.data.scopedSlots[key]()
-                }catch(e){}
+                } catch (e) {}
               }
             })
           }
@@ -268,15 +294,15 @@ export default function applyReactInVue(component, options = {}) {
           })
         })
         Object.keys(this.$scopedSlots).forEach((key) => {
-          try{
+          try {
             this.$scopedSlots[key]()
-          }catch(e){}
+          } catch (e) {}
         })
       },
       updateLastVnodeData(vnode) {
         this.lastVnodeData = {
           style: { ...this.formatStyle(vnode.data.style), ...this.formatStyle(vnode.data.staticStyle) },
-          class: Array.from(new Set([...this.formatClass(vnode.data.class), ...this.formatClass(vnode.data.staticClass)])).join(' '),
+          class: Array.from(new Set([...this.formatClass(vnode.data.class), ...this.formatClass(vnode.data.staticClass)])).join(" "),
         }
         Object.assign(vnode.data, {
           staticStyle: null,
@@ -291,7 +317,7 @@ export default function applyReactInVue(component, options = {}) {
         let vnode = this.$vnode
         this.updateLastVnodeData(vnode)
         // 每次$vnode被修改，将vnode.data中的style、staticStyle、class、staticClass记下来并且清除
-        Object.defineProperty(this, '$vnode', {
+        Object.defineProperty(this, "$vnode", {
           get() {
             return vnode
           },
@@ -299,7 +325,7 @@ export default function applyReactInVue(component, options = {}) {
             if (val === vnode) return vnode
             vnode = this.updateLastVnodeData(val)
             return vnode
-          }
+          },
         })
       },
       toCamelCase(val) {
@@ -308,7 +334,7 @@ export default function applyReactInVue(component, options = {}) {
       },
       formatStyle(val) {
         if (!val) return {}
-        if (typeof val === 'string') {
+        if (typeof val === "string") {
           val = val.trim()
           return val.split(/\s*;\s*/).reduce((prev, cur) => {
             if (!cur) {
@@ -322,7 +348,7 @@ export default function applyReactInVue(component, options = {}) {
             return prev
           }, {})
         }
-        if (typeof val === 'object') {
+        if (typeof val === "object") {
           const newVal = {}
           Object.keys(val).forEach((v) => {
             newVal[this.toCamelCase(v)] = val[v]
@@ -334,12 +360,12 @@ export default function applyReactInVue(component, options = {}) {
       formatClass(val) {
         if (!val) return []
         if (val instanceof Array) return val
-        if (typeof val === 'string') {
+        if (typeof val === "string") {
           val = val.trim()
           return val.split(/\s+/)
         }
-        if (typeof val === 'object') {
-          return Object.keys(val).map((v) => (val[v] ? val[v]: ''))
+        if (typeof val === "object") {
+          return Object.keys(val).map((v) => (val[v] ? val[v] : ""))
         }
         return []
       },
@@ -351,14 +377,14 @@ export default function applyReactInVue(component, options = {}) {
             if (slotFunction.reactFunction) {
               return slotFunction.reactFunction.apply(this, args)
             }
-            if (options.defaultSlotsFormatter){
+            if (options.defaultSlotsFormatter) {
               let scopeSlot = slotFunction.apply(this, args)
               scopeSlot.__top__ = _this
               scopeSlot = options.defaultSlotsFormatter(scopeSlot, _this.vueInReactCall, hashList)
-              if (scopeSlot instanceof Array || (typeof scopeSlot).indexOf('string', 'number') > -1) {
+              if (scopeSlot instanceof Array || (typeof scopeSlot).indexOf("string", "number") > -1) {
                 scopeSlot = [...scopeSlot]
-              } else if (typeof scopeSlot === 'object'){
-                scopeSlot = {...scopeSlot}
+              } else if (typeof scopeSlot === "object") {
+                scopeSlot = { ...scopeSlot }
               }
               return scopeSlot
             }
@@ -390,14 +416,14 @@ export default function applyReactInVue(component, options = {}) {
         for (let i in this.$el.dataset) {
           if (this.$el.dataset.hasOwnProperty(i) && (i.match(/v-[\da-z]+/) || i.match(/v[A-Z][\da-zA-Z]+/))) {
             // 尝试驼峰转中划线
-            i = i.replace(/([A-Z])/g, '-$1').toLowerCase()
-            hashMap['data-' + i] = ''
-            hashList.push('data-' + i)
+            i = i.replace(/([A-Z])/g, "-$1").toLowerCase()
+            hashMap[`data-${i}`] = ""
+            hashList.push(`data-${i}`)
           }
         }
 
-        let normalSlots = {}
-        let scopedSlots = {}
+        const normalSlots = {}
+        const scopedSlots = {}
         if (!update || update && isChildrenUpdate) {
           // 处理具名插槽，将作为属性被传递
 
@@ -435,8 +461,8 @@ export default function applyReactInVue(component, options = {}) {
           ...(!update || update && isChildrenUpdate ? {
             $slots: normalSlots,
             $scopedSlots: scopedSlots,
-            children
-          }: {}),
+            children,
+          } : {}),
           on: { ...__passedPropsOn, ...this.$listeners },
         }
         let lastNormalSlots
@@ -451,18 +477,18 @@ export default function applyReactInVue(component, options = {}) {
           const Component = createReactContainer(component, options, this)
           const reactEvent = {}
           Object.keys(__passedProps.on).forEach((key) => {
-            reactEvent['on' + key.replace(/^(\w)/, ($, $1) => $1.toUpperCase())] = __passedProps.on[key]
+            reactEvent[`on${key.replace(/^(\w)/, ($, $1) => $1.toUpperCase())}`] = __passedProps.on[key]
           })
           let reactRootComponent = <Component
               {...__passedPropsRest}
               {...this.$attrs}
-              //{...__passedProps.on}
+              // {...__passedProps.on}
               {...reactEvent}
               {...{ children }}
               {...lastNormalSlots}
               {...scopedSlots}
               {...{ "data-passed-props": __passedProps }}
-              {...(this.lastVnodeData.class ? {className: this.lastVnodeData.class}: {})}
+              {...(this.lastVnodeData.class ? { className: this.lastVnodeData.class } : {})}
               {...hashMap}
               hashList={hashList}
               style={this.lastVnodeData.style}
@@ -504,7 +530,7 @@ export default function applyReactInVue(component, options = {}) {
             // 存储portal引用
             this.reactPortal = () => ReactDOM.createPortal(
                 reactRootComponent,
-                container
+                container,
             )
             reactWrapperRef.pushReactPortal(this.reactPortal)
             return
@@ -512,7 +538,7 @@ export default function applyReactInVue(component, options = {}) {
 
           const reactInstance = ReactDOM.render(
               reactRootComponent,
-              container
+              container,
           )
           // })
         } else {
@@ -541,24 +567,27 @@ export default function applyReactInVue(component, options = {}) {
 
           const reactEvent = {}
           Object.keys(this.$listeners).forEach((key) => {
-            reactEvent['on' + key.replace(/^(\w)/, ($, $1) => $1.toUpperCase())] = this.$listeners[key]
+            reactEvent[`on${key.replace(/^(\w)/, ($, $1) => $1.toUpperCase())}`] = this.$listeners[key]
           })
-          this.cache = {...this.cache || {}, ...{
+          this.cache = {
+            ...this.cache || {},
+            ...{
               ...__passedPropsRest,
               ...this.$attrs,
               // ...this.$listeners,
               ...reactEvent,
               ...(update && isChildrenUpdate ? {
-                ...(children ? {children}: {}),
+                ...(children ? { children } : {}),
                 ...lastNormalSlots,
                 ...scopedSlots,
-              }: {}),
+              } : {}),
               ...extraData,
               ...{ "data-passed-props": __passedProps },
-              ...(this.lastVnodeData.class ? {className: this.lastVnodeData.class}: {}),
-              ...{...hashMap},
+              ...(this.lastVnodeData.class ? { className: this.lastVnodeData.class } : {}),
+              ...{ ...hashMap },
               style: this.lastVnodeData.style,
-            }}
+            },
+          }
 
           // 同步更新
           if (!this.macroTaskUpdate && !this.microTaskUpdate) {
@@ -576,13 +605,19 @@ export default function applyReactInVue(component, options = {}) {
       clearTimeout(this.updateTimer)
       // 删除portal
       if (this.reactPortal) {
-        Promise.resolve().then((() => {
-          this.parentReactWrapperRef?.removeReactPortal(this.reactPortal)
-        }))
+        // 骚操作，覆盖原生dom查找dom的一些方法，使react在vue组件销毁前仍然可以查到dom
+        overwriteDomMethods(this.$refs.react)
+        this.parentReactWrapperRef?.removeReactPortal(this.reactPortal)
+        // 恢复原生方法
+        recoverDomMethods()
         return
       }
       // 删除根节点
+      // 骚操作，覆盖原生dom查找dom的一些方法，使react在vue组件销毁前仍然可以查到dom
+      overwriteDomMethods(this.$refs.react)
       ReactDOM.unmountComponentAtNode(this.$refs.react)
+      // 恢复原生方法
+      recoverDomMethods()
     },
     updated() {
       // if (this.attrsUpdated) return
