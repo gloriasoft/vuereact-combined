@@ -576,7 +576,9 @@ export default function applyReactInVue(component, options = {}) {
       clearTimeout(this.updateTimer)
       // 删除portal
       if (this.reactPortal) {
-        this.parentReactWrapperRef.removeReactPortal(this.reactPortal)
+        Promise.resolve().then((() => {
+          this.parentReactWrapperRef?.removeReactPortal(this.reactPortal)
+        }))
         return
       }
       // 删除根节点
