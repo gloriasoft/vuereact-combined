@@ -58,6 +58,14 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
         wrapInstance[key] = ref[key]
       }
     })
+    Promise.resolve().then(() => {
+      Object.keys(ref).forEach((key) => {
+        if (!wrapInstance[key]) {
+          wrapInstance[key] = ref[key]
+        }
+      })
+    })
+
 
     // 兼容接收useRef类型的参数
     this.setRef.current = ref
@@ -370,7 +378,7 @@ export default function applyReactInVue(component, options = {}) {
         return []
       },
       // 用多阶函数解决作用域插槽的传递问题
-      getScopeSlot(slotFunction, hashList) {
+      getScopeSlot(slotFunction, hashList, originSlotFunction) {
         const _this = this
         function scopedSlotFunction(createReactSlot) {
           function getSlot(...args) {
@@ -390,7 +398,11 @@ export default function applyReactInVue(component, options = {}) {
             }
             return applyVueInReact(createReactSlot(slotFunction.apply(this, args)), { ...options, isSlots: true, wrapInstance: _this }).render()
           }
-          getSlot.vueFunction = slotFunction
+          if (options.pureTransformer && originSlotFunction) {
+            getSlot.vueFunction = originSlotFunction
+          } else {
+            getSlot.vueFunction = slotFunction
+          }
           return getSlot
         }
         scopedSlotFunction.__scopedSlot = true
@@ -413,14 +425,19 @@ export default function applyReactInVue(component, options = {}) {
         // 获取style scoped生成的hash
         const hashMap = {}
         const hashList = []
-        for (let i in this.$el.dataset) {
-          if (this.$el.dataset.hasOwnProperty(i) && (i.match(/v-[\da-z]+/) || i.match(/v[A-Z][\da-zA-Z]+/))) {
-            // 尝试驼峰转中划线
-            i = i.replace(/([A-Z])/g, "-$1").toLowerCase()
-            hashMap[`data-${i}`] = ""
-            hashList.push(`data-${i}`)
-          }
+        const scopedId = this.$vnode.context?.$vnode?.componentOptions?.Ctor?.extendOptions?._scopeId
+        if (scopedId) {
+          hashMap[scopedId] = ""
+          hashList.push(scopedId)
         }
+        // for (let i in this.$el.dataset) {
+        //   if (this.$el.dataset.hasOwnProperty(i) && (i.match(/v-[\da-z]+/) || i.match(/v[A-Z][\da-zA-Z]+/))) {
+        //     // 尝试驼峰转中划线
+        //     i = i.replace(/([A-Z])/g, "-$1").toLowerCase()
+        //     hashMap[`data-${i}`] = ""
+        //     hashList.push(`data-${i}`)
+        //   }
+        // }
 
         const normalSlots = {}
         const scopedSlots = {}
@@ -450,7 +467,7 @@ export default function applyReactInVue(component, options = {}) {
               normalSlots[i].__slot = true
               continue
             }
-            scopedSlots[i] = this.getScopeSlot(mergeScopedSlots[i], hashList)
+            scopedSlots[i] = this.getScopeSlot(mergeScopedSlots[i], hashList, this.$vnode?.data?.scopedSlots?.[i])
           }
         }
 
