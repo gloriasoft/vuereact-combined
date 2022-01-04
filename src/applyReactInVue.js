@@ -97,6 +97,13 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
         if (children instanceof Function) {
           children = children(this)
         }
+        // 有些react组件通过直接处理自身children的方式给children中的组件传递属性，会导致传递到包囊层中
+        // 这里对包囊层属性进行透传，透传条件为children中只有一个vnode
+        if (children?.length === 1 && children[0]?.data) {
+          // 过滤掉内部属性
+          const {key, ['data-passed-props']:dataPassedProps, ...otherAttrs} = this.$attrs
+          children[0].data.attrs = {...otherAttrs, ...children[0].data.attrs}
+        }
         return createElement(options.react.slotWrap, { attrs, style }, children)
       },
     }
