@@ -419,7 +419,7 @@ export default function applyReactInVue(component, options = {}) {
         // this.mountReactComponent(true, false, extraData)
         this.reactInstance && this.reactInstance.setState(extraData)
       },
-      mountReactComponent(update, isChildrenUpdate, extraData = {}) {
+      mountReactComponent(update, updateType, extraData = {}) {
         // 先提取透传属性
         let {
           on: __passedPropsOn,
@@ -448,7 +448,7 @@ export default function applyReactInVue(component, options = {}) {
 
         const normalSlots = {}
         const scopedSlots = {}
-        if (!update || update && isChildrenUpdate) {
+        if (!update || update && updateType?.slot) {
           // 处理具名插槽，将作为属性被传递
 
           const mergeSlots = { ...__passedPropsSlots, ...this.$slots }
@@ -478,11 +478,12 @@ export default function applyReactInVue(component, options = {}) {
           }
         }
 
+
         // 预生成react组件的透传属性
         const __passedProps = {
           ...__passedPropsRest,
           ...{ ...this.$attrs },
-          ...(!update || update && isChildrenUpdate ? {
+          ...(!update || update && updateType?.slot ? {
             $slots: normalSlots,
             $scopedSlots: scopedSlots,
             children,
@@ -490,14 +491,40 @@ export default function applyReactInVue(component, options = {}) {
           on: { ...__passedPropsOn, ...this.$listeners },
         }
         let lastNormalSlots
-        if (!update || update && isChildrenUpdate) {
+        if (!update || update && updateType?.slot) {
           lastNormalSlots = { ...normalSlots }
           children = lastNormalSlots.default
           delete lastNormalSlots.default
         }
 
+        // 存上一次
+        this.last = this.last || {}
+        this.last.slot = this.last.slot || {}
+        this.last.listeners = this.last.listeners || {}
+        this.last.attrs = this.last.attrs || {}
+        const compareLast = {
+          slot: () => {
+            this.last.slot = {
+              ...(children ? { children } : {children: null}),
+              ...lastNormalSlots,
+              ...scopedSlots,
+            }
+          },
+          listeners: () => {
+            this.last.listeners = __passedProps.on
+          },
+          attrs: () => {
+            this.last.attrs = this.$attrs
+          }
+        }
+        if (updateType) {
+          Object.keys(updateType).forEach((key) => compareLast[key]())
+        }
         // 如果不传入组件，就作为更新
         if (!update) {
+          compareLast.slot()
+          compareLast.listeners()
+          compareLast.attrs()
           const Component = createReactContainer(component, options, this)
           const reactEvent = {}
           Object.keys(__passedProps.on).forEach((key) => {
@@ -566,13 +593,31 @@ export default function applyReactInVue(component, options = {}) {
           )
           // })
         } else {
+
+          const setReactState = () => {
+            this.reactInstance && this.reactInstance.setState((prevState) => {
+              // 清除之前的state，阻止合并
+              Object.keys(prevState).forEach((key) => {
+                delete prevState[key]
+              })
+              return {
+                ...this.cache,
+                ...this.last.slot,
+                ...this.last.attrs,
+                ...reactEvent
+              }
+            })
+            this.cache = null
+          }
+
+
           // 更新
           if (this.microTaskUpdate) {
             // Promise异步合并更新
             if (!this.cache) {
               this.$nextTick(() => {
-                this.reactInstance && this.reactInstance.setState(this.cache)
-                this.cache = null
+                // this.reactInstance && this.reactInstance.setState(this.cache)
+                setReactState()
                 this.microTaskUpdate = false
               })
             }
@@ -583,28 +628,24 @@ export default function applyReactInVue(component, options = {}) {
             clearTimeout(this.updateTimer)
             this.updateTimer = setTimeout(() => {
               clearTimeout(this.updateTimer)
-              this.reactInstance && this.reactInstance.setState(this.cache)
-              this.cache = null
+              // this.reactInstance && this.reactInstance.setState(this.cache)
+              // this.cache = null
+              setReactState()
               this.macroTaskUpdate = false
             })
           }
 
           const reactEvent = {}
-          Object.keys(this.$listeners).forEach((key) => {
+          Object.keys(this.last.listeners).forEach((key) => {
             reactEvent[`on${key.replace(/^(\w)/, ($, $1) => $1.toUpperCase())}`] = this.$listeners[key]
           })
           this.cache = {
             ...this.cache || {},
             ...{
               ...__passedPropsRest,
-              ...this.$attrs,
-              // ...this.$listeners,
-              ...reactEvent,
-              ...(update && isChildrenUpdate ? {
-                ...(children ? { children } : {}),
-                ...lastNormalSlots,
-                ...scopedSlots,
-              } : {}),
+              // ...this.last.attrs,
+              // ...reactEvent,
+              // ...(update && updateType?.slot ? {...this.last.slot} : {}),
               ...extraData,
               ...{ "data-passed-props": __passedProps },
               ...(this.lastVnodeData.class ? { className: this.lastVnodeData.class } : {}),
@@ -615,8 +656,11 @@ export default function applyReactInVue(component, options = {}) {
 
           // 同步更新
           if (!this.macroTaskUpdate && !this.microTaskUpdate) {
-            this.reactInstance && this.reactInstance.setState(this.cache)
-            this.cache = null
+            // ...this.last.attrs,
+            // ...reactEvent,
+            // ...(update && updateType?.slot ? {...this.last.slot} : {}),
+            // this.reactInstance && this.reactInstance.setState(this.cache)
+            setReactState()
           }
         }
       },
@@ -645,13 +689,13 @@ export default function applyReactInVue(component, options = {}) {
     },
     updated() {
       // if (this.attrsUpdated) return
-      this.mountReactComponent(true, true)
+      this.mountReactComponent(true, {slot: true})
     },
     inheritAttrs: false,
     watch: {
       $attrs: {
         handler() {
-          this.mountReactComponent(true)
+          this.mountReactComponent(true, {attrs: true})
           // this.attrsUpdated = true
           // Promise.resolve().then(() => {
           //   this.attrsUpdated = false
@@ -661,13 +705,13 @@ export default function applyReactInVue(component, options = {}) {
       },
       $listeners: {
         handler() {
-          this.mountReactComponent(true)
+          this.mountReactComponent(true, {listeners: true})
         },
         deep: true,
       },
       "$props.dataPassedProps": {
         handler() {
-          this.mountReactComponent(true)
+          this.mountReactComponent(true, {passedProps: true})
         },
         deep: true,
       },
