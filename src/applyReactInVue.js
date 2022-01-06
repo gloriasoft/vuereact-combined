@@ -650,6 +650,7 @@ export default function applyReactInVue(component, options = {}) {
               ...{ "data-passed-props": __passedProps },
               ...(this.lastVnodeData.class ? { className: this.lastVnodeData.class } : {}),
               ...{ ...hashMap },
+              hashList,
               style: this.lastVnodeData.style,
             },
           }
