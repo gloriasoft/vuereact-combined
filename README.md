@@ -9,6 +9,9 @@
   <p>
 </div>  
 
+## 支持Vue3?
+Vue3和React的共同开发场景请使用[Veaury](https://github.com/devilwjp/veaury)
+
 ## 安装  
 ````  
 npm i vuereact-combined -S
@@ -22,7 +25,7 @@ npm i vuereact-combined -S
 + 使项目可以集成更多的业务代码，其他vue和react项目的优秀代码可以快速引入  
 + 使前端研发人员可以更好的学习vue和react，了解两者的精华，促进团队在前端技术栈的广度  
 + 使用方式极其简便  
-## benchmark
+## Benchmark
 非常感谢vuera的存在，开辟了Vue和React融合的想法，但是vuera只能解决非常基础的组件融合，并且存在插槽(children)和数据变更后的渲染性能问题，因此无法用于复杂的场景以及生产环境  
 vuereact-combined将融合做到了极致，支持了大部分的Vue和React组件的功能，并且在渲染更新上使用了和vuera不同的思路，完美解决了渲染性能问题  
 
