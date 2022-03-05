@@ -219,10 +219,10 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
     // 通过判断Component的原型是否不是Function原型
     if ((Object.getPrototypeOf(Component) !== Function.prototype && !(typeof Component === "object" && !Component.render)) || applyReact.catchVueRefs()) {
       return (
-          <Component {...newProps}
-                     {...{ "data-passed-props": __passedProps }} {...refInfo}>
-            {children}
-          </Component>
+        <Component {...newProps}
+                   {...{ "data-passed-props": __passedProps }} {...refInfo}>
+          {children}
+        </Component>
       )
     }
     return <FunctionComponentWrap passedProps={newProps} component={Component} {...refInfo}>{children}</FunctionComponentWrap>
@@ -531,19 +531,19 @@ export default function applyReactInVue(component, options = {}) {
             reactEvent[`on${key.replace(/^(\w)/, ($, $1) => $1.toUpperCase())}`] = __passedProps.on[key]
           })
           let reactRootComponent = <Component
-              {...__passedPropsRest}
-              {...this.$attrs}
-              // {...__passedProps.on}
-              {...reactEvent}
-              {...{ children }}
-              {...lastNormalSlots}
-              {...scopedSlots}
-              {...{ "data-passed-props": __passedProps }}
-              {...(this.lastVnodeData.class ? { className: this.lastVnodeData.class } : {})}
-              {...hashMap}
-              hashList={hashList}
-              style={this.lastVnodeData.style}
-              ref={(ref) => (this.reactInstance = ref)}
+            {...__passedPropsRest}
+            {...this.$attrs}
+            // {...__passedProps.on}
+            {...reactEvent}
+            {...{ children }}
+            {...lastNormalSlots}
+            {...scopedSlots}
+            {...{ "data-passed-props": __passedProps }}
+            {...(this.lastVnodeData.class ? { className: this.lastVnodeData.class } : {})}
+            {...hashMap}
+            hashList={hashList}
+            style={this.lastVnodeData.style}
+            ref={(ref) => (this.reactInstance = ref)}
           />
           // 必须通过ReactReduxContext连接context
           if (this.$redux && this.$redux.store && this.$redux.ReactReduxContext) {
@@ -580,16 +580,16 @@ export default function applyReactInVue(component, options = {}) {
             this.parentReactWrapperRef = reactWrapperRef
             // 存储portal引用
             this.reactPortal = () => ReactDOM.createPortal(
-                reactRootComponent,
-                container,
+              reactRootComponent,
+              container,
             )
             reactWrapperRef.pushReactPortal(this.reactPortal)
             return
           }
 
           const reactInstance = ReactDOM.render(
-              reactRootComponent,
-              container,
+            reactRootComponent,
+            container,
           )
           // })
         } else {
@@ -598,11 +598,12 @@ export default function applyReactInVue(component, options = {}) {
             this.reactInstance && this.reactInstance.setState((prevState) => {
               // 清除之前的state，阻止合并
               Object.keys(prevState).forEach((key) => {
+                if (options.isSlots && key === 'children') return
                 delete prevState[key]
               })
               return {
                 ...this.cache,
-                ...this.last.slot,
+                ...!options.isSlots && this.last.slot,
                 ...this.last.attrs,
                 ...reactEvent
               }
@@ -676,7 +677,7 @@ export default function applyReactInVue(component, options = {}) {
       if (this.reactPortal) {
         // 骚操作，覆盖原生dom查找dom的一些方法，使react在vue组件销毁前仍然可以查到dom
         overwriteDomMethods(this.$refs.react)
-        this.parentReactWrapperRef?.removeReactPortal(this.reactPortal)
+        this.parentReactWrapperRef && this.parentReactWrapperRef.removeReactPortal(this.reactPortal)
         // 恢复原生方法
         recoverDomMethods()
         return

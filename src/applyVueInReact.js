@@ -62,7 +62,7 @@ const VueContainer = React.forwardRef((props, ref) => {
     }
     // withRouter方法是通过wrappedComponentRef来传递ref的
     return (
-        <VueContainer.RouterTargetComponent {...{...props, [optionsName]: globalOptions}} forwardRef={ref} />
+      <VueContainer.RouterTargetComponent {...{...props, [optionsName]: globalOptions}} forwardRef={ref} />
     )
   } else {
     return <VueComponentLoader {...{...props, [optionsName]: globalOptions}} ref={ref}/>
@@ -139,14 +139,31 @@ class VueComponentLoader extends React.Component {
   }
 
   [`${unsafePrefix}componentWillReceiveProps`] (nextProps) {
-    let { component, [optionsName]: options, ...props } = nextProps
+    let { component, [optionsName]: options, children, $slots, ...props } = nextProps
     component = filterVueComponent(component)
     if (this.currentVueComponent !== component) {
       this.updateVueComponent(component)
     }
-    // Object.assign(this.vueInstance.$data.children, this.doVModel(props).children)
+
+    children = this.transferChildren(children)
+    $slots = this.transferSlots($slots)
+    if (children) {
+      props.children = children
+    }
+    if ($slots) {
+      props.$slots = $slots
+    }
+
     // 更改vue组件的data
-    this.vueInstance && Object.assign(this.vueInstance.$data, this.doVModel(props))
+    const newProps = this.doSync(this.doVModel(props))
+    Object.keys(this.vueInstance.$data.reactProps).forEach((key) => {
+      if (!(key in newProps) && key !== 'data-passed-props') {
+        this.vueInstance.$set(this.vueInstance.$data.reactProps, key, undefined)
+      }
+    })
+    Object.keys(newProps).forEach((key) => {
+      this.vueInstance.$set(this.vueInstance.$data.reactProps, key, newProps[key])
+    })
   }
 
   componentWillUnmount () {
@@ -296,7 +313,9 @@ class VueComponentLoader extends React.Component {
     const vueOptions = {
       ...vueRootInfo,
       data() {
-        return vueOptionsData
+        return {
+          reactProps: vueOptionsData
+        }
       },
       created() {
         this.reactWrapperRef = VueContainerInstance
@@ -424,11 +443,11 @@ class VueComponentLoader extends React.Component {
             children: __passedPropsChildren,
             on: __passedPropsOn,
             ...__passedPropsRest
-          }, ...props } = this.$data
+          }, ...props } = this.$data.reactProps
         filterNamedSlots(__passedPropsScopedSlots, __passedPropsSlots)
         // 作用域插槽的处理
         const scopedSlots = this.getScopedSlots(createElement, { ...__passedPropsScopedSlots, ...$scopedSlots })
-        const lastChildren = this.getChildren(createElement, this.children || __passedPropsChildren)
+        const lastChildren = this.getChildren(createElement, this.reactProps.children || __passedPropsChildren)
         // 获取插槽数据（包含了具名插槽）
         const namedSlots = this.getNamespaceSlots(createElement, { ...__passedPropsSlots, ...$slots })
         if (lastChildren) namedSlots.default = lastChildren
@@ -471,17 +490,17 @@ class VueComponentLoader extends React.Component {
         const attrs = filterAttrs({ ...lastProps })
         const {className: newClassName, classname: newClassName1, ...lastAttrs} = attrs
         return createElement(
-            'use_vue_wrapper',
-            {
-              props: lastProps,
-              on: lastOn,
-              nativeOn,
-              attrs: lastAttrs,
-              'class': className || newClassName || newClassName1 || '',
-              style,
-              scopedSlots: { ...scopedSlots }
-            },
-            lastSlots
+          'use_vue_wrapper',
+          {
+            props: lastProps,
+            on: lastOn,
+            nativeOn,
+            attrs: lastAttrs,
+            'class': className || newClassName || newClassName1 || '',
+            style,
+            scopedSlots: { ...scopedSlots }
+          },
+          lastSlots
         )
       },
       components: {
