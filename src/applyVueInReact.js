@@ -145,6 +145,7 @@ class VueComponentLoader extends React.Component {
       this.updateVueComponent(component)
     }
 
+    if (!this.vueInstance) return
     children = this.transferChildren(children)
     $slots = this.transferSlots($slots)
     if (children) {
@@ -338,7 +339,7 @@ class VueComponentLoader extends React.Component {
               }
               // 使用单例模式进行缓存，类似getChildren
               let newSlot
-              if (!this.getNamespaceSlots.__namespaceSlots[i]) {
+              if (!this.getNamespaceSlots.__namespaceSlots[i]?.[0]?.child?.reactInstance) {
                 newSlot = [createElement(applyReactInVue(() => slot, { ...options, isSlots: true, wrapInstance: VueContainerInstance }), { slot: slotName })]
                 this.getNamespaceSlots.__namespaceSlots[i] = newSlot
               } else {
@@ -370,7 +371,7 @@ class VueComponentLoader extends React.Component {
                 }
                 // 使用单例模式进行缓存，类似getChildren
                 let newSlot
-                if (!this.getScopedSlots.__scopeSlots[i]) {
+                if (!this.getScopedSlots.__scopeSlots[i]?.child?.reactInstance) {
                   newSlot = createElement(applyReactInVue(() => scopedSlot.apply(this, args), { ...options, isSlots: true, wrapInstance: VueContainerInstance }))
                   this.getScopedSlots.__scopeSlots[i] = newSlot
                 } else {
@@ -400,7 +401,7 @@ class VueComponentLoader extends React.Component {
               return children.vueSlot
             }
             let newSlot
-            if (!this.getChildren.__vnode) {
+            if (!this.getChildren.__vnode?.[0]?.child?.reactInstance) {
               newSlot = [createElement(applyReactInVue(() => children, { ...options, isSlots: true, wrapInstance: VueContainerInstance }))]
               this.getChildren.__vnode = newSlot
             } else {
