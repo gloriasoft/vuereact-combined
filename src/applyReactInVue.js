@@ -193,7 +193,7 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
               children = [...children]
               return
             }
-            if ((typeof children).indexOf("string", "number") > -1) {
+            if (["string", "number"].indexOf(typeof children) > -1) {
               children = [children]
               return
             }
