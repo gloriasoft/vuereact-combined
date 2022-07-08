@@ -188,11 +188,20 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
         if (options.defaultSlotsFormatter) {
           children.__top__ = this.vueWrapperRef
           children = options.defaultSlotsFormatter(children, this.vueInReactCall, hashList)
-          if (children instanceof Array || (typeof children).indexOf("string", "number") > -1) {
-            children = [...children]
-          } else if (typeof children === "object") {
-            children = { ...children }
+          function cloneChildren() {
+            if (children instanceof Array) {
+              children = [...children]
+              return
+            }
+            if ((typeof children).indexOf("string", "number") > -1) {
+              children = [children]
+              return
+            }
+            if (typeof children === "object") {
+              children = { ...children }
+            }
           }
+          cloneChildren()
         } else {
           children = { ...applyVueInReact(this.createSlot(children), { ...options, isSlots: true, wrapInstance }).render() }
         }
