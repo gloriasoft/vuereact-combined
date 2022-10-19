@@ -1,7 +1,10 @@
 import React, { version } from "react"
-import ReactDOM from "react-dom"
 import applyVueInReact, { VueContainer } from "./applyVueInReact"
 import options, { setOptions } from "./options"
+import { createPortal } from "react-dom"
+import ReactDOM from 'react-dom'
+
+const ReactMajorVersion = parseInt(version)
 
 // vueRootInfo是为了保存vue的root节点options部分信息，现在保存router、store，在applyVueInReact方法中创建vue的中间件实例时会被设置
 // 为了使applyReactInVue -> applyVueInReact之后的vue组件依旧能引用vuex和vue router
@@ -588,7 +591,7 @@ export default function applyReactInVue(component, options = {}) {
             // 存储包囊层引用
             this.parentReactWrapperRef = reactWrapperRef
             // 存储portal引用
-            this.reactPortal = () => ReactDOM.createPortal(
+            this.reactPortal = () => createPortal(
               reactRootComponent,
               container,
             )
@@ -596,6 +599,15 @@ export default function applyReactInVue(component, options = {}) {
             return
           }
 
+          if (ReactMajorVersion > 17) {
+            // I'm not afraid of being fired
+            if (ReactDOM.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED !== undefined) {
+              ReactDOM.__SECRET_INTERNALS_DO_NOT_USE_OR_YOU_WILL_BE_FIRED.usingClientEntryPoint = true
+            }
+            this.__veauryReactApp__ = ReactDOM.createRoot(container)
+            this.__veauryReactApp__.render(reactRootComponent)
+            return
+          }
           const reactInstance = ReactDOM.render(
             reactRootComponent,
             container,
@@ -694,7 +706,11 @@ export default function applyReactInVue(component, options = {}) {
       // 删除根节点
       // 骚操作，覆盖原生dom查找dom的一些方法，使react在vue组件销毁前仍然可以查到dom
       overwriteDomMethods(this.$refs.react)
-      ReactDOM.unmountComponentAtNode(this.$refs.react)
+      if (ReactMajorVersion > 17) {
+        this.__veauryReactApp__.unmount()
+      } else {
+        ReactDOM.unmountComponentAtNode(this.$refs.react)
+      }
       // 恢复原生方法
       recoverDomMethods()
     },
