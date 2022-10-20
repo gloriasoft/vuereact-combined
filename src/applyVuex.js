@@ -16,17 +16,17 @@ export function connectVuex ({ mapStateToProps = (state) => {}, mapGettersToProp
       }
       componentDidMount () {
         // 订阅
-        this.subscribe = vuexStore.subscribe((mutation, state) => {
-          const newState = {...mapStateToProps(state), ...mapGettersToProps(vuexStore.getters)}
-          const hasChanges = Object.keys(newState).some(key => newState[key] !== this.state[key])
-          if (hasChanges) {
-            this.setState(newState)
-          }
+        this.watch = vuexStore.watch(function() {
+          return {...mapStateToProps(vuexStore.state), ...mapGettersToProps(vuexStore.getters)}
+        }, (newVal) => {
+          this.setState(newVal)
+        }, {
+          deep: true
         })
       }
       componentWillUnmount () {
         // 停止订阅
-        this.subscribe()
+        this.watch()
       }
       render () {
         return (
