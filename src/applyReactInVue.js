@@ -144,11 +144,11 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
 
   render() {
     let {
-      children,
       "data-passed-props": __passedProps,
       hashList,
       ...props
     } = this.state
+    let children
     // 保留一份作用域和具名插槽，用于之后再透传给vue组件
     const $slots = {}
     const $scopedSlots = {}
@@ -184,6 +184,9 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
       }
     }
     // 普通插槽
+    if (!props.children?.vueFunction) {
+      children = props.children
+    }
     if (children != null) {
       if (!children.reactSlot) {
         const vueSlot = children
@@ -233,11 +236,11 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
       return (
         <Component {...newProps}
                    {...{ "data-passed-props": __passedProps }} {...refInfo}>
-          {children}
+          {children || newProps.children}
         </Component>
       )
     }
-    return <FunctionComponentWrap passedProps={newProps} component={Component} {...refInfo}>{children}</FunctionComponentWrap>
+    return <FunctionComponentWrap passedProps={newProps} component={Component} {...refInfo}>{children || newProps.children}</FunctionComponentWrap>
   }
 }
 export default function applyReactInVue(component, options = {}) {
