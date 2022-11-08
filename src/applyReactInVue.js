@@ -164,11 +164,20 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
           if (options.defaultSlotsFormatter) {
             props[i].__top__ = this.vueWrapperRef
             props[i] = options.defaultSlotsFormatter(props[i], this.vueInReactCall, hashList)
-            if (props[i] instanceof Array || (typeof props[i]).indexOf("string", "number") > -1) {
-              props[i] = [...props[i]]
-            } else if (typeof props[i] === "object") {
-              props[i] = { ...props[i] }
+            function cloneChildren() {
+              if (props[i] instanceof Array) {
+                props[i] = [...props[i]]
+                return
+              }
+              if (["string", "number"].indexOf(typeof props[i]) > -1) {
+                props[i] = [props[i]]
+                return
+              }
+              if (typeof props[i] === "object") {
+                props[i] = { ...props[i] }
+              }
             }
+            cloneChildren()
           } else {
             props[i] = { ...applyVueInReact(this.createSlot(props[i]), { ...options, isSlots: true, wrapInstance }).render() }
           }
@@ -177,7 +186,9 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
           props[i] = props[i].reactSlot
         }
         $slots[i] = props[i]
-      } else if (props[i].__scopedSlot) {
+        continue
+      }
+      if (props[i].__scopedSlot) {
         // 作用域插槽是个纯函数，在react组件中需要传入作用域调用，然后再创建vue的插槽组件
         props[i] = props[i](this.createSlot)
         $scopedSlots[i] = props[i]
@@ -186,35 +197,6 @@ const createReactContainer = (Component, options, wrapInstance) => class applyRe
     // 普通插槽
     if (!props.children?.vueFunction) {
       children = props.children
-    }
-    if (children != null) {
-      if (!children.reactSlot) {
-        const vueSlot = children
-        // 自定义插槽处理
-        if (options.defaultSlotsFormatter) {
-          children.__top__ = this.vueWrapperRef
-          children = options.defaultSlotsFormatter(children, this.vueInReactCall, hashList)
-          function cloneChildren() {
-            if (children instanceof Array) {
-              children = [...children]
-              return
-            }
-            if (["string", "number"].indexOf(typeof children) > -1) {
-              children = [children]
-              return
-            }
-            if (typeof children === "object") {
-              children = { ...children }
-            }
-          }
-          cloneChildren()
-        } else {
-          children = { ...applyVueInReact(this.createSlot(children), { ...options, isSlots: true, wrapInstance }).render() }
-        }
-        children.vueSlot = vueSlot
-      } else {
-        children = children.reactSlot
-      }
     }
     $slots.default = children
     // 封装透传属性
