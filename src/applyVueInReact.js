@@ -5,8 +5,7 @@ import applyReactInVue from './applyReactInVue'
 import vueRootInfo from './vueRootInfo'
 import { reactRouterInfo, setReactRouterInVue, updateReactRouterInVue } from './applyReactRouterInVue'
 import globalOptions, {setOptions} from './options'
-import ReactDOM from "react-dom";
-import {MountingPortal} from 'portal-vue'
+import {MountingPortal} from './portal-vue.esm'
 import REACT_ALL_HANDLERS from './reactAllHandles'
 
 const unsafePrefix = parseFloat(version) >= 17 ? 'UNSAFE_' : ''

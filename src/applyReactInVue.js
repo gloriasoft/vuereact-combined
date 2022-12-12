@@ -3,13 +3,11 @@ import applyVueInReact, { VueContainer } from "./applyVueInReact"
 import options, { setOptions } from "./options"
 import { createPortal } from "react-dom"
 import ReactDOM from 'react-dom'
-
-const ReactMajorVersion = parseInt(version)
-
 // vueRootInfo是为了保存vue的root节点options部分信息，现在保存router、store，在applyVueInReact方法中创建vue的中间件实例时会被设置
 // 为了使applyReactInVue -> applyVueInReact之后的vue组件依旧能引用vuex和vue router
 import vueRootInfo from "./vueRootInfo"
 
+const ReactMajorVersion = parseInt(version)
 const domMethods = ["getElementById", "getElementsByClassName", "getElementsByTagName", "getElementsByTagNameNS", "querySelector", "querySelectorAll"]
 const domTopObject = { Document: {}, Element: {} }
 // 覆盖原生的查找dom对象的方法，为了确保react在销毁前都可以获取dom，而vue的beforeDestroy阶段已经将dom卸载的问题
